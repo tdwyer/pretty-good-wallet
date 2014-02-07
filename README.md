@@ -28,6 +28,8 @@ Mutt Config
 Python 2 Program Integration
 ----------------------------
 Simply import. Then set the passwords or get the passwords. Note that this will overwrite stored passwords without warnning.
+
+    #!/usr/bin/python2
     from gpgWallet.GpgWallet import Wallet
     wallet = Wallet()
     service = 'https://example.com/ampache/'
@@ -63,8 +65,9 @@ Bash Shell
 
 ### Save new account password in --batch mode *Good for scripting*
 *Without force gpgwallet will not overwrite*
-    read -s -p 'Type in the pass here so it is not saved in history: ' pass
-    gpgwallet --batch 'mail.google.com' 'thomas' ${pass} force
+
+    $ read -s -p 'Type in the pass here so it is not saved in history: ' pass
+    $ gpgwallet --batch 'mail.google.com' 'thomas' ${pass} force
 
 ### Lets get the password from Standard Out
     password = $(gpgwallet 'mail.google.com' 'thomas')
@@ -74,7 +77,7 @@ Bash Shell
     gpgwallet --rm 'mail.google.com' 'thomas'
 
 ### This is what the GpgWallet *Wallet* looks like.
-    ls -1R ~/.gpgwallet
+    $ ls -1R ~/.gpgwallet
     .gpgwallet:
     B1BC2367EA1BA66E6A8C36F65B54EE7BF9BB32C81A5E0F9D39F5EB316B52D888
     defaults.conf
@@ -85,7 +88,7 @@ Bash Shell
 ### Lets check out the Interactive Mode
 
 In Interactive mode has some over the top ASCI art :p
-    gpgwallet --new
+    $ gpgwallet --new
 
     #####################################################################
     #                                                                   #
