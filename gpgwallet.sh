@@ -4,9 +4,13 @@
 #          FILE: gpg-wallet
 #       LICENSE: GPGv3
 #
-#       INSTALL: install -Dm755 gpg-wallet/gpg-wallet.sh /usr/bin/gpg-wallet
+#       INSTALL: install -Dm755 GpgWallet/gpgwallet.sh /usr/bin/gpgwallet
 #
-#         USAGE: gpg-wallet google.com bobyjones
+#         USAGE: password = $(gpgwallet google.com bobyjones)
+#                gpgwallet --batch google.com bobyjones 'newPassword' force
+#                gpgwallet --rm google.com bobyjones
+#                "Interactive mode supports add, update, and configure"
+#                gpgwallet --new
 #
 #   DESCRIPTION: Think gnome-keyring, but no extra daemon or password.
 #                Use gpg-agent to encrypt each password to a file, and
@@ -24,7 +28,7 @@
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
 #  ORGANIZATION: http://tomd.tel/
 #       CREATED: 12/30/2013 12:01 UTC
-#       UPDATED: 01/23/2014 07:00 UTC
+#       UPDATED: 02/07/2014 07:00 UTC
 #      REVISION: 3.0
 #===============================================================================
 #
@@ -32,7 +36,7 @@ MKD=/usr/bin/mkdir
 RM=/usr/bin/rm
 GPG=/usr/bin/gpg
 #
-RING="${HOME}/.gpg-wallet"
+RING="${HOME}/.gpgwallet"
 CONF="${RING}/defaults.conf"
 
 main() {
