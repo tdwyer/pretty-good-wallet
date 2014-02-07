@@ -12,15 +12,20 @@
 #                Use gpg-agent to encrypt each password to a file, and
 #                decrypt the password to standard out.
 #
-#       OPTIONS: { --new | --batch * * pass kfp 'force'| --rm } 'Service' 'User'
+#       OPTIONS: --new
+#                'Service' 'User' **Returns Password to stdout
+#                --rm 'Service' 'User'
+#                --batch 'Service' 'User'
+#                --batch 'Service' 'User' 'Pass' **Or 'force'
+#                --batch 'Service' 'User' 'Pass' 'force'
 #  REQUIREMENTS: Bash GnuPG gpg-agent
-#          BUGS: Prob.
+#          BUGS: No spaces allowed in passwords
 #         NOTES: Best with "keychain" which maintains an unlocked gpg-agent
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
 #  ORGANIZATION: http://tomd.tel/
 #       CREATED: 12/30/2013 12:01 UTC
 #       UPDATED: 01/23/2014 07:00 UTC
-#      REVISION: 2.5
+#      REVISION: 3.0
 #===============================================================================
 #
 MKD=/usr/bin/mkdir
@@ -61,13 +66,16 @@ main() {
     ;;
     --rm)
       [[ -z ${2} || -z ${3} || ! -z ${4} ]] && \
-        esc 132 "Usage: ${0} --rn 'Service' 'User'" || \
+        esc 132 "Usage: ${0} --rm 'Service' 'User'" || \
         del_account "${2}" "${3}"
       esc 0
     ;;
     --conf)
       jen_config
       esc 0
+    ;;
+    --help)
+      esc 0 "Usage: ${0} {--new | --batch 'kfp' 'pwd' | --rm} 'Service' 'User'"
     ;;
     *)
       [[ -z ${2} || ! -z ${3} ]] && \
