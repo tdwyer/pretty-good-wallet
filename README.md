@@ -20,6 +20,7 @@ GpgWallet
 
 Mutt Config
 -----------
+
     set my_pw_lavabit = $(gpgwallet lavabit.com tdwyer)
     set imap_pass = $my_pw_lavabit
     set smtp_pass = $my_pw_lavabit
@@ -43,6 +44,7 @@ Bash Shell
 ----------
 
 ### Set the Default GPG Fingerprint of the key to use
+
     gpgwallet --conf
 
     #####################################################################
@@ -70,13 +72,16 @@ Bash Shell
     $ gpgwallet --batch 'mail.google.com' 'thomas' ${pass} force
 
 ### Lets get the password from Standard Out
+
     password = $(gpgwallet 'mail.google.com' 'thomas')
     echo $password
 
 ### Lets Delete the password
+
     gpgwallet --rm 'mail.google.com' 'thomas'
 
 ### This is what the GpgWallet *Wallet* looks like.
+
     $ ls -1R ~/.gpgwallet
     .gpgwallet:
     B1BC2367EA1BA66E6A8C36F65B54EE7BF9BB32C81A5E0F9D39F5EB316B52D888
@@ -88,6 +93,7 @@ Bash Shell
 ### Lets check out the Interactive Mode
 
 In Interactive mode has some over the top ASCI art :p
+
     $ gpgwallet --new
 
     #####################################################################
