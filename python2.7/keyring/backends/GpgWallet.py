@@ -17,7 +17,7 @@
 #  ORGANIZATION: http://tomd.tel/
 #       CREATED: 01/22/2014 14:01 UTC
 #       UPDATED: 02/07/2014 07:49 UTC
-#      REVISION: 3.0
+#      REVISION: v10.0
 #===============================================================================
 #
 from keyring.backend import KeyringBackend
@@ -51,7 +51,7 @@ class Wallet(KeyringBackend):
     if username is None:
       username = self.username
 
-    args = ["gpgwallet", service, username]
+    args = ["gpgwallet", "-d", "-s", service, "-u", username]
     out = ""
     try:
       out = subprocess.check_output(args).strip()
@@ -62,6 +62,7 @@ class Wallet(KeyringBackend):
 
   def set_password(self, service=None, username=None, password=None):
     """Set password for the username of the service
+    Unable to set a passwords with spaces
     """
     if service is None:
       service = self.service
@@ -70,7 +71,9 @@ class Wallet(KeyringBackend):
     if password is None:
       password = self.password
 
-    args = ["gpgwallet", "--batch", service, username, password, "force"]
+    if ' ' in password:
+      raise PasswordSetError("GpgWallet is unable save password with spaces in batch mode")
+    args = ["gpgwallet", "-e", "-s", service, "-u", username, "-p", password]
     out = ''
     try:
       out = subprocess.check_output(args).strip()
@@ -84,12 +87,5 @@ class Wallet(KeyringBackend):
       service = self.service
     if username is None:
       username = self.username
-
-    args = ["gpgwallet", "--rm", service, username]
-    out = ""
-    try:
-      out = subprocess.check_output(args).strip()
-    except subprocess.CalledProcessError:
-      raise PasswordSetError(out)
 
 #  vim: set ts=2 sw=2 tw=80 et :

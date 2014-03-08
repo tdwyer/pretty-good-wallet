@@ -20,7 +20,7 @@
 #  ORGANIZATION: http://tomd.tel/
 #       CREATED: 01/22/2014 14:01 UTC
 #       UPDATED: 02/07/2014 07:49 UTC
-#      REVISION: 3.0
+#      REVISION: v10.0
 #===============================================================================
 #
 import subprocess
@@ -59,7 +59,7 @@ class Wallet:
     if username is None:
       username = self.username
 
-    args = ["gpgwallet", service, username]
+    args = ["gpgwallet", "-d", "-s", service, "-u", username]
     out = ""
     try:
       out = subprocess.check_output(args).strip()
@@ -78,23 +78,8 @@ class Wallet:
     if password is None:
       password = self.password
 
-    args = ["gpgwallet", "--batch", service, username, password, "force"]
+    args = ["gpgwallet", "-e", "-s", service, "-u", username, "-p", password]
     out = ''
-    try:
-      out = subprocess.check_output(args).strip()
-    except subprocess.CalledProcessError:
-      if self.debug: return out
-
-  def delete_password(self, service=None, username=None):
-    """Delete the password for the username of the service.
-    """
-    if service is None:
-      service = self.service
-    if username is None:
-      username = self.username
-
-    args = ["gpgwallet", "--rm", service, username]
-    out = ""
     try:
       out = subprocess.check_output(args).strip()
     except subprocess.CalledProcessError:
