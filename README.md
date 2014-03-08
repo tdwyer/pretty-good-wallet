@@ -3,7 +3,6 @@ GpgWallet
 *A password manager you can work with*
 
 
-**Support for Python Keyring** Working to replicate **Gnome-Keyring** and **KWallet** API's. The goal is to be supported by applications with no extra work from the application developers.
 **Supports**
   - **gnu-screen**
     - Send password to Screens' Copy buffer
