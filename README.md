@@ -55,8 +55,8 @@ Simply import. Then set the passwords or get the passwords. Note that this will 
     wallet.delete_password(service, user)
 
 
-Bash Shell
-----------
+From a Shell
+------------
 
 
 Save password for user account. From the shell you can save passwords with spaces in them.
