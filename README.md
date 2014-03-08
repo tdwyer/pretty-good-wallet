@@ -12,7 +12,7 @@ GpgWallet
     - Python2 keygring backend plugin
   - **Python 2.7**
     - Import gpgWallet for secure password storage and access in your Python programs
-  - X11 Clipboard
+  - **X11 Clipboard**
     - Install `xclip` for copy to *clipbarod support*
 
 **Features**
@@ -24,7 +24,7 @@ GpgWallet
   - Freedom to Choose and Change ciphers
     - 4096 bit RSA Keys or 1024 bit RSA Keys
     - 256 bit TwoFish or DES
-  - No Extra password to remember, with gpg-agent
+  - No Extra password to remember or typeing with gpg-agent
     - Best with `keyring` from the Funtoo Linux project which maintains an unlocked keychain
 - Save files and notes with each service.
 
@@ -33,7 +33,7 @@ Mutt Config
 -----------
 
 
-    set my_pw_lavabit = $(gpgwallet lavabit.com tdwyer)
+    set my_pw_lavabit = $(gpgwallet -d -s lavabit.com -u tdwyer)
     set imap_pass = $my_pw_lavabit
     set smtp_pass = $my_pw_lavabit
     account-hook $folder "set imap_user=$my_username imap_pass=$my_pw_lavabit"
