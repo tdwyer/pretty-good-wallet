@@ -15,9 +15,7 @@
 #         NOTES: Best with "keychain" which maintains an unlocked gpg-agent
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
 #  ORGANIZATION: http://tomd.tel/
-#       CREATED: 01/22/2014 14:01 UTC
-#       UPDATED: 02/07/2014 07:49 UTC
-#      REVISION: v10.0
+#      REVISION: v10.3
 #===============================================================================
 #
 from keyring.backend import KeyringBackend

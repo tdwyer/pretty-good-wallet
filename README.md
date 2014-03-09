@@ -1,5 +1,5 @@
-GpgWallet
-==========
+PGW - Pretty Good Wallet
+========================
 *A password manager you can work with*
 
 
@@ -10,7 +10,7 @@ GpgWallet
   - **Python Keyring**
     - Python2 keygring backend plugin
   - **Python 2.7**
-    - Import gpgWallet for secure password storage and access in your Python programs
+    - Import prettyGoodWallet for secure password storage and access in your Python programs
   - **X11 Clipboard**
     - Install `xclip` for copy to *clipbarod support*
 
@@ -38,7 +38,7 @@ Mutt Config
 -----------
 
 
-    set my_pw_lavabit = $(gpgwallet -d -s lavabit.com -u tdwyer)
+    set my_pw_lavabit = $(pgw -d -s lavabit.com -u tdwyer)
     set imap_pass = $my_pw_lavabit
     set smtp_pass = $my_pw_lavabit
     account-hook $folder "set imap_user=$my_username imap_pass=$my_pw_lavabit"
@@ -51,7 +51,7 @@ Python 2 Program Integration
 Simply import. Then set the passwords or get the passwords. Note that this will overwrite stored passwords without warning.
 
     #!/usr/bin/python2
-    from gpgWallet.GpgWallet import Wallet
+    from PyPGW.PGW import Wallet
     wallet = Wallet()
     service = 'https://example.com/ampache/'
     user = 'thomas'
@@ -67,28 +67,28 @@ From a Shell
 
 Save password for user account. From the shell you can save passwords with spaces in them.
 
-    gpgwallet -e -s example.com -u alice
+    pgw -e -s example.com -u alice
     Enter passwd:
     Re-enter passwd:
 
 Save file for account
 
-    gpgwallet -e -s example.com -f SecretQuestions.txt
+    pgw -e -s example.com -f SecretQuestions.txt
 
 Get decrypted file from encrypted storage
 
-    gpgwallet -d -s example.com -f SecretQestions.txt >tmpfs/SecretQestions.txt
+    pgw -d -s example.com -f SecretQestions.txt >tmpfs/SecretQestions.txt
 
 Copy password to X11 Clipboard
 
-    gpgwallet -d --clip -s example.com -u alice
+    pgw -d --clip -s example.com -u alice
 
 Copy password to Gnu Screen Copy / past buffer. *`env` $STY used as destination screen session*
 
-    gpgwallet -d --screen -s example.com -u alice
+    pgw -d --screen -s example.com -u alice
 
 Send password to a Gnu Screen Windows' stdin *`env` $STY used as destination screen session*
 
-    gpgwallet -d --window 2 example.com -u alice
+    pgw -d --window 2 example.com -u alice
 
 
