@@ -22,7 +22,6 @@ WAL="$HOME/.gnupg/wallet"
 KEYID="$(cat "${WAL}/KEYID")"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
-    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$_in:$dst:$num"
     case "${led}" in
         list)        
             [[ -z ${srv} ]] && find "${WAL}" -mindepth 1 -maxdepth 1 -type d ||\
@@ -80,16 +79,17 @@ parse_args() {
                 dir='passwd' ; obj="${arg}"
             ;;
             -p)
-                _in="${arg}" # _in :is to be encrypted
+                _in="${arg}"
             ;;
             -f)
-                dir='files' ; _in="${arg}" # _in :is to be encrypted
+                dir='files' ; _in="${arg}"
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
         esac ; flag="${arg}"
     done ; wdir="${WAL}/${srv}/${dir}" ; validate
 }
 # - - - Check for errors - - - #
 validate() {
+    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$_in:$dst:$num"
     if [[ ${led} != "list" ]] ;then
         if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/KEYID" ; exit 1
         elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
