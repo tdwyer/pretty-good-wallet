@@ -1,19 +1,16 @@
 #!/usr/bin/python2
 #===============================================================================
 #
-#          FILE: GpgWallet.py
+#          FILE: pgw4keyring.py
 #       LICENSE: GPLv3
 #
-#         USAGE: from gpgWallet.GpgWallet import Wallet
-#                wallet = Wallet()
-#                wallet.set_password("mail.google.com", "thomas", "789xyz")
-#                wallet.get_password("mail.google.com", "thomas")
-#                wallet.delete_password("mail.google.com", "thomas")
+#         USAGE: import keyring
+#                keyring.set_keyring(pgw.Wallet())
 #
-#   DESCRIPTION: Python 2.7 module for gpgwallet integration
+#   DESCRIPTION: Python 2 keyring-3.3 backend for pgw
 #
 #       OPTIONS: supported(), get_password(), set_password(), delete_password()
-#  REQUIREMENTS: Bash GnuPG and gpgwallet with default fingerprint set
+#  REQUIREMENTS: Bash GnuPG and pgw with default fingerprint set
 #          BUGS: No known bugs
 #         NOTES: Best with "keychain" which maintains an unlocked gpg-agent
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
@@ -23,33 +20,28 @@
 #      REVISION: v10.0
 #===============================================================================
 #
+from keyring.backend import KeyringBackend
+from keyring.errors import PasswordDeleteError
+from keyring.errors import PasswordSetError, ExceptionRaisedContext
 import subprocess
 
-class Wallet:
-  """
-  Python Wrapper Class for gpg-wallet
-
-  Usage:
-  from gpgWallet.GpgWallet import Wallet
-  wallet = Wallet()
-  wallet.set_password("mail.google.com", "billy", "789xyz")
-  wallet.get_password("mail.google.com", "billy")
-  wallet.delete_password("mail.google.com", "billy")
-  """
+class Wallet(KeyringBackend):
+  """pgw Backend"""
 
   def __init__(self, debug=False, service=None, username=None, password=None):
-    self.debug = debug
     self.service = service
     self.username = username
     self.password = password
-    self.supported()
 
   def supported(self):
-    """If gpgwallet is not installed
-    OSError: [Errno 2] No such file or directory
+    """If pgw is installed return 0 else return -1
     """
-    args = ["gpgwallet", "--help"]
-    out = subprocess.check_output(args).strip()
+    args = ["pgw", "--help"]
+    try:
+      out = subprocess.check_output(args).strip()
+      return 0
+    except:
+      return -1
 
   def get_password(self, service=None, username=None, default_value=None):
     """Get password of the username for the service
@@ -59,7 +51,7 @@ class Wallet:
     if username is None:
       username = self.username
 
-    args = ["gpgwallet", "-d", "-s", service, "-u", username]
+    args = ["pgw", "-d", "-s", service, "-u", username]
     out = ""
     try:
       out = subprocess.check_output(args).strip()
@@ -70,6 +62,7 @@ class Wallet:
 
   def set_password(self, service=None, username=None, password=None):
     """Set password for the username of the service
+    Unable to set a passwords with spaces
     """
     if service is None:
       service = self.service
@@ -78,11 +71,21 @@ class Wallet:
     if password is None:
       password = self.password
 
-    args = ["gpgwallet", "-e", "-s", service, "-u", username, "-p", password]
+    if ' ' in password:
+      raise PasswordSetError("pgw is unable save password with spaces in batch mode")
+    args = ["pgw", "-e", "-s", service, "-u", username, "-p", password]
     out = ''
     try:
       out = subprocess.check_output(args).strip()
     except subprocess.CalledProcessError:
-      if self.debug: return out
+      raise PasswordSetError(out)
+
+  def delete_password(self, service=None, username=None):
+    """Delete the password for the username of the service.
+    """
+    if service is None:
+      service = self.service
+    if username is None:
+      username = self.username
 
 #  vim: set ts=2 sw=2 tw=80 et :
