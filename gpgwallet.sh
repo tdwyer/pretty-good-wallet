@@ -7,7 +7,7 @@ Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #|--stdout)]
                 [-s example.com] [-u username (-p password)] [-f filename]
 -l  mail.con    :List services in db OR List stored objects for service
 -e              :Encrypt
--d              :Decrypt, [Default action] Send plaintext to stdout
+-d              :Decrypt: [Default] Send plaintext to stdout
     --clip      :Send to X11 clipboard
     --screen    :Send to gnu-screen copy buffer 
     --window #  :Send to stdin of gnu-screen window Number
@@ -19,20 +19,20 @@ Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #|--stdout)]
 SCREEN=$(which screen)
 XCLIP=$(which xclip)
 WAL="$HOME/.gnupg/wallet"
-KEY="$(cat "${WAL}/KEY")"
+KEYID="$(cat "${WAL}/KEYID")"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
-    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$txt:$dst:$num"
+    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$_in:$dst:$num"
     case "${led}" in
         list)        
-            [[ -z ${srv} ]] && find "${WAL}" -maxdepth 1 -mindepth 1 -type d ||\
+            [[ -z ${srv} ]] && find "${WAL}" -mindepth 1 -maxdepth 1 -type d ||\
             find "${WAL}/${srv}" -type f
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
             [[ "${dir}" != "passwd" ]] && \
-                ${GPG} -i -r "${KEY}" -o ${wdir}/${obj} -e ${txt} || \
-                echo -n "${txt}" | ${GPG} -e -r "${KEY}" > ${wdir}/${obj}
+                ${GPG} -i -r "${KEYID}" -o ${wdir}/${obj} -e ${_in} || \
+                echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${wdir}/${obj}
         ;;
         decrypt)
             plaintext="$(${GPG} --use-agent --batch --quiet -d ${wdir}/${obj})"
@@ -44,7 +44,7 @@ main() {
                     ${SCREEN} -S $STY -X register . "${plaintext}"
                 ;;
                 window)
-                    screen -S $STY -p $num -X stuff "${plaintext}"
+                    ${SCREEN} -S $STY -p "${num}" -X stuff "${plaintext}"
                 ;;
                 *)
                     echo -n "${plaintext}"
@@ -71,7 +71,7 @@ parse_args() {
                 dst='screen'
             ;;
             --window)
-                dst='window' ; num=${arg}
+                dst='window' ; num="${arg}"
             ;;
             -s)
                 srv="${arg}"
@@ -80,10 +80,10 @@ parse_args() {
                 dir='passwd' ; obj="${arg}"
             ;;
             -p)
-                txt="${arg}"
+                _in="${arg}" # _in :is to be encrypted
             ;;
             -f)
-                dir='files' ; txt="${arg}"
+                dir='files' ; _in="${arg}" # _in :is to be encrypted
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
         esac ; flag="${arg}"
     done ; wdir="${WAL}/${srv}/${dir}" ; validate
@@ -91,17 +91,17 @@ parse_args() {
 # - - - Check for errors - - - #
 validate() {
     if [[ ${led} != "list" ]] ;then
-        if [[ -z ${KEY} ]] ;then
-            echo "Put your GPG uid or fingerprint in: ${WAL}/KEY" ; exit 1
+        if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/KEYID" ; exit 1
         elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
             echo "${HELP}" ; exit 255
         elif [[ ${dst} == 'window' && -z ${num} ]] ;then
             echo "Missing Window Number" ; exit 128
-        elif [[ ${led} == 'encrypt' && ${dir} == 'files' && ! -f ${txt} ]] ;then
+        elif [[ ${led} == 'encrypt' && ${dir} == 'files' && ! -f ${_in} ]] ;then
             echo "File not found" ; exit 128
-        elif [[ ${led} == "encrypt" && ${dir} == "passwd" && -z ${txt} ]] ;then
-            read -sp "Enter passwd: " txt ;echo; read -sp "Re-enter passwd: " v
-            if [[ ${txt} != ${v} || -z ${txt} ]] ;then
+            #
+        elif [[ ${led} == "encrypt" && ${dir} == "passwd" && -z ${_in} ]] ;then
+            read -sp "Enter passwd: " _in ;echo; read -sp "Re-enter passwd: " v
+            if [[ ${_in} != ${v} || -z ${_in} ]] ;then
                 echo 'Passwords did not match!' ; exit 128 ; fi
         fi
     fi ; main
