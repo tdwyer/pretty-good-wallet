@@ -3,7 +3,7 @@
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
-Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #|--stdout)]
+Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #)]
                 [-s example.com] [-u username (-p password)] [-f filename]
 -l  mail.con    :List services in db OR List stored objects for service
 -e              :Encrypt
