@@ -15,17 +15,23 @@ GpgWallet
     - Install `xclip` for copy to *clipbarod support*
 
 **Features**
-- It's file-system level
+- Save related documents and notes
+- File-system level
   - No Incompatible Database Files
-  - Backup your passwords with _Git_
-- 100% GnuPG
-  - No Extra service to fail
+  - Sync and Backup with _Git_
+- GnuPG 
+  - No extra service to fail
   - Freedom to Choose and Change ciphers
     - 4096 bit RSA Keys or 1024 bit RSA Keys
     - 256 bit TwoFish or DES
-  - No Extra password to remember or typeing with gpg-agent
+  - No Extra password to remember or typing with gpg-agent
     - Best with `keyring` from the Funtoo Linux project which maintains an unlocked keychain
-- Save files and notes with each service.
+- **Really...**
+  - If you just change lines 34,35, and 38
+    - Use OpenSSL or GnuTLS with an SSL Cert
+    - Pipe through or to dm-crypt/LUKS
+    - Use encrypted sqlite3 DB
+  - extra, extra
 
 
 Mutt Config

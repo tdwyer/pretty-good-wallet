@@ -1,107 +1,110 @@
 #!/bin/bash
-#
-# GpgWallet v10.0
-# Thomas Dwyer <devel@tomd.tel> : http://tomd.tel
-# GPLv3
-#
-HELP="Usage ${0} [-l (example.com)] [-e] [-d (--clip|-screen|--window Num|--stdout)]
-               [-s example.com] [-u username (-p password)] [-f filename]
--l example.com :List services in db OR List stored objects for service
--e             :Encrypt
--d             :Decrypt
-    --clip     :Send to X11 clipboard
-    --screen   :Send to gnu-screen copy buffer 
-    --window # :Send to stdin of gnu-screen window Number
-    --stdout   :[Default] Send to stdout Redirect decrypted file to >plain.txt
--s example.com :Service, a service name must be given when (de|en)crypting
--u username    :Username, of service/user pair to which the password is for
-    -p passwd  :Password to encrypt, Prompted for if not provided
--f file        :File to encrypt/decrypt"
-WAL="$HOME/.gnupg/wallet"
-KEY="$(cat "${WAL}/KEY")"
-GPG=$(which gpg)
+#   GpgWallet       v10.2              GPLv3
+#   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
+DBUG=           # If DBUG not Null display parsed args
+HELP="
+Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #|--stdout)]
+                [-s example.com] [-u username (-p password)] [-f filename]
+-l  mail.con    :List services in db OR List stored objects for service
+-e              :Encrypt
+-d              :Decrypt, [Default action] Send plaintext to stdout
+    --clip      :Send to X11 clipboard
+    --screen    :Send to gnu-screen copy buffer 
+    --window #  :Send to stdin of gnu-screen window Number
+-s  mail.con    :Service, a service name must be given when (de|en)crypting
+-u  username    :Username, of service/user pair to which the password is for
+    --pass pwd  :Password to encrypt, Prompted for if not provided
+-f  file        :File to encrypt/decrypt
+" ;GPG=$(which gpg)
 SCREEN=$(which screen)
 XCLIP=$(which xclip)
-# - - - Main program: List, Encrypt, or Decrypt objects - - - #
+WAL="$HOME/.gnupg/wallet"
+KEY="$(cat "${WAL}/KEY")"
+# - - - List, Encrypt, or Decrypt objects - - - #
 main() {
-    action=$1 ;srv=$2 ;dir=$3 ;w_dir=$4 ;w_file=$5 ;bits=$6 ;sendto=$6 ;w_num=$7
-    case "${action}" in
+    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$txt:$dst:$num"
+    case "${led}" in
         list)        
             [[ -z ${srv} ]] && find "${WAL}" -maxdepth 1 -mindepth 1 -type d ||\
             find "${WAL}/${srv}" -type f
         ;;
         encrypt)
-            [[ ! -d ${w_dir}  ]] && mkdir -p ${w_dir}
+            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
             [[ "${dir}" != "passwd" ]] && \
-                ${GPG} -i -r "${KEY}" -o ${w_file} -e ${bits} || \
-                echo -n "${bits}" | ${GPG} -e -r "${KEY}" > ${w_file}
+                ${GPG} -i -r "${KEY}" -o ${wdir}/${obj} -e ${txt} || \
+                echo -n "${txt}" | ${GPG} -e -r "${KEY}" > ${wdir}/${obj}
         ;;
         decrypt)
-            plaintext="$(gpg --use-agent --batch --quiet -d ${w_file})"
-            case "${sendto}" in
-                --clip)
+            plaintext="$(${GPG} --use-agent --batch --quiet -d ${wdir}/${obj})"
+            case "${dst}" in
+                clipboard)
                     echo -n "${plaintext}" | ${XCLIP} -selection clipboard -in
-                    exit ${?}
                 ;;
-                --screen)
+                screen)
                     ${SCREEN} -S $STY -X register . "${plaintext}"
-                    exit ${?}
                 ;;
-                --window)
-                    screen -S $STY -p $w_num -X stuff "${plaintext}"
-                    exit ${?}
-            esac ; echo -n "${plaintext}"
-    esac
-    exit ${?}
+                window)
+                    screen -S $STY -p $num -X stuff "${plaintext}"
+                ;;
+                *)
+                    echo -n "${plaintext}"
+            esac
+    esac ; exit ${?}
 }
-# - - - Parse the arguments, set variable values, and check for errors - - - #
+# - - - Parse the arguments - - - #
 parse_args() {
-    flag=''
-    for value in ${@} ;do
+    flags='' ;for arg in ${@} ;do
         case "${flag}" in
             -l)
-                action='list' ; [[ ${value} != "Padding" ]] && srv="${value}"
+                led='list' ; [[ -z ${srv} && ${arg} != 'X' ]] && srv="${arg}"
             ;;
             -e)
-                action='encrypt'
+                led='encrypt'
             ;;
             -d)
-                action='decrypt' ; sendto="${value}"
+                led='decrypt'
+            ;;
+            --clip)
+                dst='clipboard'
+            ;;
+            --screen)
+                dst='screen'
             ;;
             --window)
-                w_num=${value}
-                if [[ -z ${w_num} ]] ;then echo "Missing Window #" ; exit 1 ;fi
+                dst='window' ; num=${arg}
             ;;
             -s)
-                srv="${value}"
+                srv="${arg}"
             ;;
             -u)
-                dir='passwd' ; obj="${value}"
+                dir='passwd' ; obj="${arg}"
             ;;
             -p)
-                bits="${value}"
+                txt="${arg}"
             ;;
             -f)
-                dir='files' ; obj="${value}" ; bits=${obj}
-        esac ; flag="${value}"
-    done
-    # - - - Check for missing values and other errors - - - #
-    if [[ ${1} != "-l" ]] ;then
-        w_dir="${WAL}/${srv}/${dir}" ; w_file="${w_dir}/${obj}"
-        if [[ -z ${srv} || -z ${dir} || -z ${obj} || -z ${action} ]] ;then
-            echo "${HELP}" ; exit 1
-        elif [[ ${1} == "-e" && ${dir} == "passwd" && -z ${bits} ]] ;then
-            read -sp "Enter passwd: " bits ;echo; read -sp "Reenter passwd: " vp
-            if [[ ${bits} != ${vp} || -z ${bits} ]] ;then
-                echo 'Passwords did not match!' ; exit 128
-            fi
-        elif [[ ${1} == '-e' && ${dir} == 'files' && ! -f ${bits} ]] ;then
-            echo "File not found" ; exit 128
-        elif [[ -z ${KEY} ]] ;then
-            echo "Put your GPG uid or fingerprint in: ${WAL}/KEY" ; exit 1
-        fi
-    fi
-    main ${action} ${srv} ${dir} ${w_dir} ${w_file} ${bits} ${sendto} ${w_num}
+                dir='files' ; txt="${arg}"
+                obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
+        esac ; flag="${arg}"
+    done ; wdir="${WAL}/${srv}/${dir}" ; validate
 }
-parse_args ${@} Padding
+# - - - Check for errors - - - #
+validate() {
+    if [[ ${led} != "list" ]] ;then
+        if [[ -z ${KEY} ]] ;then
+            echo "Put your GPG uid or fingerprint in: ${WAL}/KEY" ; exit 1
+        elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
+            echo "${HELP}" ; exit 255
+        elif [[ ${dst} == 'window' && -z ${num} ]] ;then
+            echo "Missing Window Number" ; exit 128
+        elif [[ ${led} == 'encrypt' && ${dir} == 'files' && ! -f ${txt} ]] ;then
+            echo "File not found" ; exit 128
+        elif [[ ${led} == "encrypt" && ${dir} == "passwd" && -z ${txt} ]] ;then
+            read -sp "Enter passwd: " txt ;echo; read -sp "Re-enter passwd: " v
+            if [[ ${txt} != ${v} || -z ${txt} ]] ;then
+                echo 'Passwords did not match!' ; exit 128 ; fi
+        fi
+    fi ; main
+}
+parse_args ${@} X #The X is flag+value for-loop padding
 # /* vim: set ts=4 sw=4 tw=80 et :*/
