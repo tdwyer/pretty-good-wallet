@@ -24,7 +24,8 @@ KEYID="$(cat "${WAL}/.KEYID")"
 main() {
     case "${led}" in
         tree)
-            $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && findUI || treeUI
+            $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && \
+            findUI | less || treeUI | less
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
@@ -109,7 +110,7 @@ validate() {
 }
 # - - - tree command view - - - #
 treeUI() {
-    cd ${WAL} ;a="tree --noreport --prune -t"
+    cd ${WAL} ;a="tree --noreport --prune -C"
     if [[ -z ${srv} ]] ;then
         if [[ -z ${trm} ]] ;then
             [[ -z ${dir} ]] && $a || $a ./*/${dir}
