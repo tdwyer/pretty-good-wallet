@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       v10.3              GPLv3
+#   GpgWallet       GPLv3              v10.4.1
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
@@ -18,7 +18,7 @@ Usage ${0} [-l (search-term)] [-e] [-d (--clip|--screen|--window #)]
 " ;GPG=$(which gpg)
 SCREEN=$(which screen)
 XCLIP=$(which xclip)
-WAL="$HOME/.gnupg/wallet"
+[[ -z $GNUPGHOME ]] && export GNUPGHOME="$HOME/.gnupg" ;WAL="$GNUPGHOME/wallet"
 KEYID="$(cat "${WAL}/.KEYID")"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
@@ -27,13 +27,13 @@ main() {
             $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && findUI || treeUI
         ;;
         encrypt)
-            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
+            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir} ; cd ${wdir}
             [[ "${dir}" != "passwd" ]] && \
-                ${GPG} -i -r "${KEYID}" -o ${wdir}/${obj} -e ${_in} || \
-                echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${wdir}/${obj}
+                ${GPG} -i -r "${KEYID}" -o ${obj} -e ${_in} || \
+                echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${obj}
         ;;
         decrypt)
-            plaintext="$(${GPG} --use-agent --batch --quiet -d ${wdir}/${obj})"
+            plaintext="$(${GPG} --batch --quiet -d ${wdir}/${obj})"
             case "${dst}" in
                 clipboard)
                     echo -n "${plaintext}" | ${XCLIP} -selection clipboard -in
