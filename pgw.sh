@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.4.1
+#   GpgWallet       GPLv3              v10.4.2
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
@@ -8,7 +8,7 @@ Usage ${0} [-l (search-term)] [-e] [-d (--clip|--screen|--window #)]
 -l  term        :Locate objects, Refine search with: -s, -u, -f, and/or term
 -e              :Encrypt
 -d              :Decrypt: [Default] Send plaintext to stdout
-    --clip      :Send to X11 clipboard
+    --clip      :Send to 'primary' selection Middle click to paste
     --screen    :Send to gnu-screen copy buffer 
     --window #  :Send to stdin of gnu-screen window Number
 -s  mail.con    :Service, a service name must be given when (de|en)crypting
@@ -36,7 +36,7 @@ main() {
             plaintext="$(${GPG} --batch --quiet -d ${wdir}/${obj})"
             case "${dst}" in
                 clipboard)
-                    echo -n "${plaintext}" | ${XCLIP} -selection clipboard -in
+                    echo -n "${plaintext}" | ${XCLIP} -selection primary -in
                 ;;
                 screen)
                     ${SCREEN} -S $STY -X register . "${plaintext}"
