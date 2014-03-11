@@ -3,9 +3,9 @@
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
-Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #)]
+Usage ${0} [-l (search-term)] [-e] [-d (--clip|--screen|--window #)]
                 [-s example.com] [-u username (-p password)] [-f filename]
--l  mail.con    :List services in db OR List stored objects for service
+-l  term        :Locate objects, Refine search with: -s, -u, -f, and/or term
 -e              :Encrypt
 -d              :Decrypt: [Default] Send plaintext to stdout
     --clip      :Send to X11 clipboard
@@ -19,13 +19,12 @@ Usage ${0} [-l (mail.con)] [-e] [-d (--clip|--screen|--window #)]
 SCREEN=$(which screen)
 XCLIP=$(which xclip)
 WAL="$HOME/.gnupg/wallet"
-KEYID="$(cat "${WAL}/KEYID")"
+KEYID="$(cat "${WAL}/.KEYID")"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
     case "${led}" in
-        list)        
-            [[ -z ${srv} ]] && find "${WAL}" -mindepth 1 -maxdepth 1 -type d ||\
-            find "${WAL}/${srv}" -type f
+        tree)
+            $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && findUI || treeUI
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
@@ -55,7 +54,7 @@ parse_args() {
     flags='' ;for arg in ${@} ;do
         case "${flag}" in
             -l)
-                led='list' ; [[ -z ${srv} && ${arg} != 'X' ]] && srv="${arg}"
+                led='tree' ; trm="${arg}"
             ;;
             -e)
                 led='encrypt'
@@ -89,22 +88,48 @@ parse_args() {
 }
 # - - - Check for errors - - - #
 validate() {
-    [[ ! -z $DBUG ]] && echo "ARGS*$led:$srv:$wdir:$obj:$_in:$dst:$num"
-    if [[ ${led} != "list" ]] ;then
-        if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/KEYID" ; exit 1
+    [[ ! -z $DBUG ]] && echo "ARGS*$ted:$srv:$wdir:$obj:$_in:$dst:$num"
+    if [[ ${led} != "tree" ]] ;then
+        if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/.KEYID" ; exit 1
         elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
             echo "${HELP}" ; exit 255
         elif [[ ${dst} == 'window' && -z ${num} ]] ;then
             echo "Missing Window Number" ; exit 128
         elif [[ ${led} == 'encrypt' && ${dir} == 'files' && ! -f ${_in} ]] ;then
             echo "File not found" ; exit 128
-            #
         elif [[ ${led} == "encrypt" && ${dir} == "passwd" && -z ${_in} ]] ;then
             read -sp "Enter passwd: " _in ;echo; read -sp "Re-enter passwd: " v
             if [[ ${_in} != ${v} || -z ${_in} ]] ;then
                 echo 'Passwords did not match!' ; exit 128 ; fi
         fi
-    fi ; main
+    else [[ "-s -u -f ZZZ" =~ "${trm}" ]] && trm='' ;fi ; main
 }
-parse_args ${@} X #The X is flag+value for-loop padding
+# - - - tree command view - - - #
+treeUI() {
+    cd ${WAL} ;a="tree --noreport --prune -t"
+    if [[ -z ${srv} ]] ;then
+        if [[ -z ${trm} ]] ;then
+            [[ -z ${dir} ]] && $a || $a ./*/${dir}
+        else
+            [[ -z ${dir} ]] && $a -P "*${trm}*" || $a -P "*${trm}*" ./*/${dir}
+        fi
+    else
+        [[ -z ${trm} ]] && $a ${srv}/${dir} || $a -P "*${trm}*" ${srv}/${dir}
+    fi
+}
+# - - - find command view - - - #
+findUI() {
+    cd ${WAL} ;a="find -mindepth"
+    if [[ -z ${srv} ]] ;then
+        if [[ -z ${trm} ]] ;then
+            [[ -z ${dir} ]] && $a 2 || $a 2 -path "./*/${dir}/*"
+        else
+            [[ -z ${dir} ]] && $a 2 -name "*${trm}*" || \
+                $a 2 -path "./*/${dir}/*" -name "*${trim}*"
+        fi
+    else
+        cd ${srv}/${dir} ; [[ -z ${trm} ]] && $a 1 || $a 1 -name "*${trm}*"
+    fi
+}
+parse_args ${@} ZZZ #The ZZZ is flag+value for-loop padding
 # /* vim: set ts=4 sw=4 tw=80 et :*/
