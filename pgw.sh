@@ -3,14 +3,14 @@
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
-Usage ${0} [-l (search-term)] [-e] [-d (--clip|--screen|--window #)]
+Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
                 [-s example.com] [-u username (-p password)] [-f filename]
 -l  term        :Locate objects, Refine search with: -s, -u, -f, and/or term
 -e              :Encrypt
--d              :Decrypt: [Default] Send plaintext to stdout
-    --clip      :Send to 'primary' selection Middle click to paste
-    --screen    :Send to gnu-screen copy buffer 
-    --window #  :Send to stdin of gnu-screen window Number
+-d              :Send to plaintext to stdout
+-clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary: DEFAULT  1
+-screen         :Send to gnu-screen copy buffer 
+-window #       :Send to stdin of gnu-screen window Number
 -s  mail.con    :Service, a service name must be given when (de|en)crypting
 -u  username    :Username, of service/user pair to which the password is for
     --pass pwd  :Password to encrypt, Prompted for if not provided
@@ -36,7 +36,8 @@ main() {
             plaintext="$(${GPG} --batch --quiet -d ${wdir}/${obj})"
             case "${dst}" in
                 clipboard)
-                    echo -n "${plaintext}" | ${XCLIP} -selection primary -in
+                    s=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
+                    echo -n "${plaintext}" | ${XCLIP} -selection ${s[$cto]} -in
                 ;;
                 screen)
                     ${SCREEN} -S $STY -X register . "${plaintext}"
@@ -44,7 +45,7 @@ main() {
                 window)
                     ${SCREEN} -S $STY -p "${num}" -X stuff "${plaintext}"
                 ;;
-                *)
+                stdout)
                     echo -n "${plaintext}"
             esac
     esac ; exit ${?}
@@ -60,16 +61,16 @@ parse_args() {
                 led='encrypt'
             ;;
             -d)
-                led='decrypt'
+                led='decrypt' ; dst='stdout'
             ;;
-            --clip)
-                dst='clipboard'
+            -clip)
+                led='decrypt' ; dst='clipboard' ; cto="${arg}"
             ;;
-            --screen)
-                dst='screen'
+            -screen)
+                led='decrypt' ; dst='screen'
             ;;
-            --window)
-                dst='window' ; num="${arg}"
+            -window)
+                led='decrypt' ; dst='window' ; num="${arg}"
             ;;
             -s)
                 srv="${arg}"
@@ -89,6 +90,7 @@ parse_args() {
 # - - - Check for errors - - - #
 validate() {
     [[ ! -z $DBUG ]] && echo "ARGS*$ted:$srv:$wdir:$obj:$_in:$dst:$num"
+    [[ ! "1 2 3" =~ ${cto}  ]] && cto='1'
     if [[ ${led} != "tree" ]] ;then
         if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/.KEYID" ; exit 1
         elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
