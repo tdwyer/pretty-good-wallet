@@ -27,10 +27,10 @@ main() {
             $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && findUI || treeUI
         ;;
         encrypt)
-            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir} ; cd ${wdir}
+            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
             [[ "${dir}" != "passwd" ]] && \
-                ${GPG} -i -r "${KEYID}" -o ${obj} -e ${_in} || \
-                echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${obj}
+                ${GPG} -r "${KEYID}" -o ${wdir}/${obj} -e ${_in} || \
+                echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${wdir}/${obj}
         ;;
         decrypt)
             plaintext="$(${GPG} --batch --quiet -d ${wdir}/${obj})"
@@ -83,7 +83,7 @@ parse_args() {
             ;;
             -f)
                 dir='files' ; _in="${arg}"
-                obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
+                obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1).gpg"
         esac ; flag="${arg}"
     done ; wdir="${WAL}/${srv}/${dir}" ; validate
 }
