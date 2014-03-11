@@ -13,7 +13,7 @@ Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
 -window #       :Send to stdin of gnu-screen window Number
 -s  mail.con    :Service, a service name must be given when (de|en)crypting
 -u  username    :Username, of service/user pair to which the password is for
-    --pass pwd  :Password to encrypt, Prompted for if not provided
+    -p pwd      :Password to encrypt, Prompted for if not provided
 -f  file        :File to encrypt/decrypt
 " ;GPG=$(which gpg)
 SCREEN=$(which screen)
@@ -83,7 +83,8 @@ parse_args() {
             ;;
             -f)
                 dir='files' ; _in="${arg}"
-                obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1).gpg"
+                obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
+                [[ $(echo $obj |rev |cut -d '.' -f 1) != 'gpg' ]] && obj+=".gpg"
         esac ; flag="${arg}"
     done ; wdir="${WAL}/${srv}/${dir}" ; validate
 }
