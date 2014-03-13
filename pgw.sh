@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.4.3
+#   GpgWallet       GPLv3              v10.5
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
