@@ -1,20 +1,21 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.4.2
+#   GpgWallet       GPLv3              v10.4.3
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 DBUG=           # If DBUG not Null display parsed args
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
-                [-s example.com] [-u username (-p password)] [-f filename]
--l  term        :Locate objects, Refine search with: -s, -u, -f, and/or term
+                [-s example.com] [-k username (-p password)] [-v filename]
+-f  str         :Find, search wallet with: -d, -k, -v and/or string in name
+-t  str         :Same as -f except with tree command
 -e              :Encrypt
--d              :Send to plaintext to stdout
+-stdout         :Send to plaintext to stdout
 -clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary: DEFAULT  1
 -screen         :Send to gnu-screen copy buffer 
 -window #       :Send to stdin of gnu-screen window Number
--s  mail.con    :Service, a service name must be given when (de|en)crypting
--u  username    :Username, of service/user pair to which the password is for
-    -p pwd      :Password to encrypt, Prompted for if not provided
--f  file        :File to encrypt/decrypt
+-d  domainname  :Domain, Each domain contains a Keyring and a Vault
+-k  username    :Keyring, User/Password password is prompted for
+    -p pwd      :Password, Provide password instead of being prompted
+-v  filename    :Vault, Security and easily store related files
 " ;GPG=$(which gpg)
 SCREEN=$(which screen)
 XCLIP=$(which xclip)
@@ -22,22 +23,25 @@ XCLIP=$(which xclip)
 KEYID="$(cat "${WAL}/.KEYID")"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
-    case "${led}" in
+    case "${cmd}" in
+        find)
+            findUI
+        ;;
         tree)
-            $(which tree >/dev/null 2>&1) ;[[ $? -gt 0 ]] && findUI || treeUI
+            treeUI | less
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
-            [[ "${dir}" != "passwd" ]] && \
+            [[ "${dir}" != "keyring" ]] && \
                 ${GPG} -r "${KEYID}" -o ${wdir}/${obj} -e ${_in} || \
                 echo -n "${_in}" | ${GPG} -e -r "${KEYID}" > ${wdir}/${obj}
         ;;
         decrypt)
             plaintext="$(${GPG} --batch --quiet -d ${wdir}/${obj})"
             case "${dst}" in
-                clipboard)
+                clip)
                     s=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
-                    echo -n "${plaintext}" | ${XCLIP} -selection ${s[$cto]} -in
+                    echo -n "${plaintext}" | ${XCLIP} -selection ${s[${sl}]} -in
                 ;;
                 screen)
                     ${SCREEN} -S $STY -X register . "${plaintext}"
@@ -54,84 +58,87 @@ main() {
 parse_args() {
     flags='' ;for arg in ${@} ;do
         case "${flag}" in
-            -l)
-                led='tree' ; trm="${arg}"
+            -f)
+                cmd='find' ; str="${arg}"
+            ;;
+            -t)
+                cmd='tree' ; str="${arg}"
             ;;
             -e)
-                led='encrypt'
+                cmd='encrypt'
             ;;
-            -d)
-                led='decrypt' ; dst='stdout'
+            -stdout)
+                cmd='decrypt' ; dst='stdout'
             ;;
             -clip)
-                led='decrypt' ; dst='clipboard' ; cto="${arg}"
+                cmd='decrypt' ; dst='clip' ; sl="${arg}"
             ;;
             -screen)
-                led='decrypt' ; dst='screen'
+                cmd='decrypt' ; dst='screen'
             ;;
             -window)
-                led='decrypt' ; dst='window' ; num="${arg}"
+                cmd='decrypt' ; dst='window' ; num="${arg}"
             ;;
-            -s)
-                srv="${arg}"
+            -d)
+                dom="${arg}"
             ;;
-            -u)
-                dir='passwd' ; obj="${arg}"
+            -k)
+                dir='keyring' ; obj="${arg}"
             ;;
             -p)
                 _in="${arg}"
             ;;
-            -f)
-                dir='files' ; _in="${arg}"
+            -v)
+                dir='vault' ; _in="${arg}"
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
                 [[ $(echo $obj |rev |cut -d '.' -f 1) != 'gpg' ]] && obj+=".gpg"
         esac ; flag="${arg}"
-    done ; wdir="${WAL}/${srv}/${dir}" ; validate
+    done ; wdir="${WAL}/${dom}/${dir}" ; validate
 }
 # - - - Check for errors - - - #
 validate() {
     [[ ! -z $DBUG ]] && echo "ARGS*$ted:$srv:$wdir:$obj:$_in:$dst:$num"
-    [[ ! "1 2 3" =~ ${cto}  ]] && cto='1'
-    if [[ ${led} != "tree" ]] ;then
+    [[ ! "1 2 3" =~ ${sl}  ]] && sl='1'
+    if [[ ${cmd} != "tree" && ${cmd} != "find" ]] ;then
         if [[ -z ${KEYID} ]] ;then echo "Put GPG uid in: ${WAL}/.KEYID" ; exit 1
-        elif [[ -z ${led} || -z ${srv} || -z ${dir} || -z ${obj} ]] ;then
+        elif [[ -z ${cmd} || -z ${dom} || -z ${dir} || -z ${obj} ]] ;then
             echo "${HELP}" ; exit 255
         elif [[ ${dst} == 'window' && -z ${num} ]] ;then
             echo "Missing Window Number" ; exit 128
-        elif [[ ${led} == 'encrypt' && ${dir} == 'files' && ! -f ${_in} ]] ;then
+        elif [[ ${cmd} == 'encrypt' && ${dir} == 'vault' && ! -f ${_in} ]] ;then
             echo "File not found" ; exit 128
-        elif [[ ${led} == "encrypt" && ${dir} == "passwd" && -z ${_in} ]] ;then
+        elif [[ ${cmd} == "encrypt" && ${dir} == "keyring" && -z ${_in} ]] ;then
             read -sp "Enter passwd: " _in ;echo; read -sp "Re-enter passwd: " v
             if [[ ${_in} != ${v} || -z ${_in} ]] ;then
                 echo 'Passwords did not match!' ; exit 128 ; fi
         fi
-    else [[ "-s -u -f ZZZ" =~ "${trm}" ]] && trm='' ;fi ; main
+    else [[ "-d -k -p -v ZZZ" =~ "${str}" ]] && str='' ;fi ; main
 }
 # - - - tree command view - - - #
 treeUI() {
-    cd ${WAL} ;a="tree --noreport --prune -t"
-    if [[ -z ${srv} ]] ;then
-        if [[ -z ${trm} ]] ;then
+    cd ${WAL} ;a="tree --noreport --prune -C"
+    if [[ -z ${dom} ]] ;then
+        if [[ -z ${str} ]] ;then
             [[ -z ${dir} ]] && $a || $a ./*/${dir}
         else
-            [[ -z ${dir} ]] && $a -P "*${trm}*" || $a -P "*${trm}*" ./*/${dir}
+            [[ -z ${dir} ]] && $a -P "*${str}*" || $a -P "*${str}*" ./*/${dir}
         fi
     else
-        [[ -z ${trm} ]] && $a ${srv}/${dir} || $a -P "*${trm}*" ${srv}/${dir}
+        [[ -z ${str} ]] && $a ${dom}/${dir} || $a -P "*${str}*" ${dom}/${dir}
     fi
 }
 # - - - find command view - - - #
 findUI() {
     cd ${WAL} ;a="find -mindepth"
-    if [[ -z ${srv} ]] ;then
-        if [[ -z ${trm} ]] ;then
-            [[ -z ${dir} ]] && $a 2 || $a 2 -path "./*/${dir}/*"
+    if [[ -z ${dom} ]] ;then
+        if [[ -z ${str} ]] ;then
+            [[ -z ${dir} ]] && $a 3 || $a 3 -path "./*/${dir}/*"
         else
-            [[ -z ${dir} ]] && $a 2 -name "*${trm}*" || \
-                $a 2 -path "./*/${dir}/*" -name "*${trim}*"
+            [[ -z ${dir} ]] && $a 3 -name "*${str}*" || \
+                $a 3 -path "./*/${dir}/*" -name "*${str}*"
         fi
     else
-        cd ${srv}/${dir} ; [[ -z ${trm} ]] && $a 1 || $a 1 -name "*${trm}*"
+        cd ${dom}/${dir} ; [[ -z ${str} ]] && $a 1 || $a 1 -name "*${str}*"
     fi
 }
 parse_args ${@} ZZZ #The ZZZ is flag+value for-loop padding

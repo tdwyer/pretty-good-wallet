@@ -15,7 +15,7 @@
 #         NOTES: Best with "keychain" which maintains an unlocked gpg-agent
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
 #  ORGANIZATION: http://tomd.tel/
-#      REVISION: v10.3
+#      REVISION: v10.4
 #===============================================================================
 #
 from keyring.backend import KeyringBackend
@@ -26,9 +26,9 @@ import subprocess
 class Wallet(KeyringBackend):
   """pgw Backend"""
 
-  def __init__(self, debug=False, service=None, username=None, password=None):
-    self.service = service
-    self.username = username
+  def __init__(self, debug=False, domain=None, pgwKey=None, password=None):
+    self.domain = domain
+    self.pgwKey = pgwKey
     self.password = password
 
   def supported(self):
@@ -41,15 +41,9 @@ class Wallet(KeyringBackend):
     except:
       return -1
 
-  def get_password(self, service=None, username=None, default_value=None):
-    """Get password of the username for the service
+  def shell(self, args):
+    """Run system command in a subprocess and wait for it to finish
     """
-    if service is None:
-      service = self.service
-    if username is None:
-      username = self.username
-
-    args = ["pgw", "-d", "-s", service, "-u", username]
     out = ""
     try:
       out = subprocess.check_output(args).strip()
@@ -58,32 +52,34 @@ class Wallet(KeyringBackend):
         out = default_value
     return out
 
-  def set_password(self, service=None, username=None, password=None):
-    """Set password for the username of the service
+  def get_password(self, domain=None, pgwKey=None, default_value=None):
+    """Get password of the pgwKey of the domain
+    """
+    if domain is None:
+      domain = self.domain
+    if pgwKey is None:
+      pgwKey = self.pgwKey
+
+    return self.shell(["pgw", "-stdout", "-d", domain, "-k", pgwKey])
+
+  def set_password(self, domain=None, pgwKey=None, password=None):
+    """Set password for the pgwKey of the domain
     Unable to set a passwords with spaces
     """
-    if service is None:
-      service = self.service
-    if username is None:
-      username = self.username
+    if domain is None:
+      domain = self.domain
+    if pgwKey is None:
+      pgwKey = self.pgwKey
     if password is None:
       password = self.password
 
     if ' ' in password:
       raise PasswordSetError("pgw is unable save password with spaces in batch mode")
-    args = ["pgw", "-e", "-s", service, "-u", username, "-p", password]
+    args = ["pgw", "-e", "-d", domain, "-k", pgwKey, "-p", password]
     out = ''
     try:
       out = subprocess.check_output(args).strip()
     except subprocess.CalledProcessError:
       raise PasswordSetError(out)
-
-  def delete_password(self, service=None, username=None):
-    """Delete the password for the username of the service.
-    """
-    if service is None:
-      service = self.service
-    if username is None:
-      username = self.username
 
 #  vim: set ts=2 sw=2 tw=80 et :
