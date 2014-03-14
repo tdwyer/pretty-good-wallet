@@ -26,9 +26,9 @@ import subprocess
 class Wallet(KeyringBackend):
   """pgw Backend"""
 
-  def __init__(self, debug=False, domain=None, pgwKey=None, password=None):
+  def __init__(self, debug=False, domain=None, username=None, password=None):
     self.domain = domain
-    self.pgwKey = pgwKey
+    self.username = username
     self.password = password
 
   def supported(self):
@@ -52,30 +52,30 @@ class Wallet(KeyringBackend):
         out = default_value
     return out
 
-  def get_password(self, domain=None, pgwKey=None, default_value=None):
-    """Get password of the pgwKey of the domain
+  def get_password(self, domain=None, username=None, default_value=None):
+    """Get password of the username of the domain
     """
     if domain is None:
       domain = self.domain
-    if pgwKey is None:
-      pgwKey = self.pgwKey
+    if username is None:
+      username = self.username
 
-    return self.shell(["pgw", "-stdout", "-d", domain, "-k", pgwKey])
+    return self.shell(["pgw", "-stdout", "-d", domain, "-k", username])
 
-  def set_password(self, domain=None, pgwKey=None, password=None):
-    """Set password for the pgwKey of the domain
+  def set_password(self, domain=None, username=None, password=None):
+    """Set password for the username of the domain
     Unable to set a passwords with spaces
     """
     if domain is None:
       domain = self.domain
-    if pgwKey is None:
-      pgwKey = self.pgwKey
+    if username is None:
+      username = self.username
     if password is None:
       password = self.password
 
     if ' ' in password:
       raise PasswordSetError("pgw is unable save password with spaces in batch mode")
-    args = ["pgw", "-e", "-d", domain, "-k", pgwKey, "-p", password]
+    args = ["pgw", "-e", "-d", domain, "-k", username, "-v", password]
     out = ''
     try:
       out = subprocess.check_output(args).strip()

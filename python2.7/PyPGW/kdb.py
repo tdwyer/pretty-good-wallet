@@ -31,8 +31,9 @@ class cmd():
 
     def __init__(
             self,
-            kdb_file = pgw.cmd().get_meta().vaults['kdb'].value('filepath'),
-            kdb_password = pgw.cmd().get_meta().pgwKeyrings['kdb'].value('password'),
+            kdb_file = pgw.Interface().get_meta().vaults['kdb'].value('filepath'),
+            kdb_keyfile = pgw.Interface().get_meta().vaults['kdb'].value('keyfile'),
+            kdb_password = pgw.Interface().get_meta().pgwKeyrings['kdb'].value('password'),
             new_kdb = True,
             ):
         self.kdb = KPDBv1(new = new_kdb)
@@ -48,7 +49,7 @@ class cmd():
         if exists, url is obtained from wallet/domain/vault/url
         if exists, comment is obtained from wallet/domain/vault/comment
         """
-        wallet = pgw.cmd().get_meta()
+        wallet = pgw.Interface().get_meta()
         pgw_group = self.kdb.create_group(title="pgw")
 
         for pgwKeyring in wallet.pgwKeyrings.itervalues():
@@ -72,6 +73,7 @@ class cmd():
                         url = url,
                         username = username,
                         password = pgwKeyring.value(pgwKey),
+                        keyfile = keyfile,
                         comment = comment,
                         )
 

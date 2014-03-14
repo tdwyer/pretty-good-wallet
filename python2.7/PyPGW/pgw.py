@@ -4,9 +4,9 @@
 #          FILE: PyPGW.py
 #       LICENSE: GPLv3
 #
-#         USAGE:
+#         USAGE: Import pgw \n Interface = pgw.interface()
 #
-#   DESCRIPTION: Python 2.7 module for pgw integration
+#   DESCRIPTION: Python 2.7 Pretty Good Wallet API
 #
 #       OPTIONS:
 #  REQUIREMENTS:
@@ -58,7 +58,7 @@ class Wallet(object):
       self.vaults[domain].addVFile(obj_name)
 
   def addPgwKeyring(self, pgwKeyring):
-    """
+    """Accepts PgwKeyring object or PgwKeyring.domain str
     """
     if pgwKeyring.__class__ == PgwKeyring:
       if self.pgwKeyrings.has_key(pgwKeyring.domain):
@@ -72,7 +72,7 @@ class Wallet(object):
         self.pgwKeyrings[domain] = PgwKeyring(domain=domain, pgwKeys={})
 
   def addVault(self, vault):
-    """
+    """Accepts Vault object or Vault.domain str
     """
     if vault.__class__ == Vault:
       if self.vaults.has_key(vault.domain):
@@ -88,7 +88,7 @@ class Wallet(object):
 
 class PgwKeyring(object):
   """Keyring object only contains metadata
-  cmd.get_key(self.domain, self.keys[key])
+  Interface.get_key(self.domain, self.keys[key])
   """
   def __init__(
       self,
@@ -102,7 +102,7 @@ class PgwKeyring(object):
     return self.domain
 
   def addPgwKey(self, pgwKey):
-    """
+    """Acepts PgwKey object or PgwKey.name str
     """
     if pgwKey.__class__ == PgwKey:
       if self.pgwKeys.has_key(pgwKey.name):
@@ -134,7 +134,7 @@ class PgwKeyring(object):
 
 class Vault(object):
   """The Vault object only contains metadata
-  cmd.get_key(self.domain, self.vfiles[vfile])
+  Interface.get_key(self.domain, self.vfiles[vfile])
   """
   def __init__(
       self,
@@ -148,7 +148,7 @@ class Vault(object):
     return self.domain
 
   def addVFile(self, vfile):
-    """
+    """Acceptes VFile object or VFile.name str
     """
     if vfile.__class__ == VFile:
       if self.vfiles.has_key(vfile.name):
@@ -195,7 +195,7 @@ class Vault(object):
 
 
 class PgwKey(object):
-  """Key object only contains metadata
+  """Key object contains metadata, get value with PgwKeyring.value() function
   """
 
   def __init__(
@@ -208,12 +208,11 @@ class PgwKey(object):
     return self.name
 
   def value(self, domain):
-    pgw = cmd()
-    return pgw.get_pgwKeyValue(domain=domain, pgwKeyname=self.name)
+    return Interface().get_pgwKeyValue(domain=domain, pgwKeyname=self.name)
 
 
 class VFile(object):
-  """ VFile object only contains metadata
+  """ VFile object contains metadata, get value with Vault.value() function
   """
 
   def __init__(
@@ -226,17 +225,16 @@ class VFile(object):
     return self.name
 
   def value(self, domain):
-    pgw = cmd()
-    return pgw.get_VFileValue(domain=domain, vfilename=self.name)
+    return Interface().get_VFileValue(domain=domain, vfilename=self.name)
 
 
-class cmd():
+class Interface(object):
   """
   Python Wrapper Class for pgw
 
   Usage:
-  from PyPGW.pgw import cmd
-  wallet = cmd()
+  from PyPGW.pgw import Interface
+  wallet = Interface()
   """
 
   def __init__(
@@ -255,10 +253,10 @@ class cmd():
     self.default_value = default_value
 
   def shell(self, args):
-    """Run a system command and handel errors
-    Takes list of strings as args
-    Returns raw output, empty string, or subprocess debug if debug=True
-    """
+#    """Run a system command and handel errors
+#    Takes list of strings as args
+#    Returns raw output, empty string, or subprocess debug if debug=True
+#    """
 #    try:
 #        out = subprocess.check_output(args).strip()
 #    except subprocess.CalledProcessError:
@@ -297,7 +295,7 @@ class cmd():
       ):
     """Set password for the username of the domain
     """
-    return self.shell(["pgw", "-e", "-s", domain, "-k", keyname, "-p", password])
+    return self.shell(["pgw", "-e", "-d", domain, "-k", keyname, "-v", password])
 
   def get_VFileValue(
       self,
@@ -306,7 +304,7 @@ class cmd():
       ):
     """Get file from a domains vault
     """
-    return self.shell(["pgw", "-stdout", "-d", domain, "-v", vfilename])
+    return self.shell(["pgw", "-stdout", "-d", domain, "-f", vfilename])
 
   def set_VFileValue(
       self,
@@ -315,7 +313,7 @@ class cmd():
       ):
     """Takes domain of Vault() and the full path to file to put in the Vault()
     """
-    return self.shell(["pgw", "-e", "-s", domain, "-v", filepath])
+    return self.shell(["pgw", "-e", "-d", domain, "-f", filepath])
 
   def populate_wallet(
       self,
@@ -337,7 +335,7 @@ class cmd():
       args.append("-k")
 
     elif obj_type == "vault":
-      args.append("-v")
+      args.append("-f")
 
     a = self.shell(args).split('\n')[:-1]
     for item in a:
