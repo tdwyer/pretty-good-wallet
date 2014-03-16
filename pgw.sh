@@ -181,6 +181,7 @@ selectList() {
 }
 # - - - Gen select list - - - #
 genList() {
+    evalColors
     cd ${WAL} ;start_color=2 ;LN=1
     for line in $(echo $index) ;do
         # Set color
@@ -255,42 +256,44 @@ gitInit() {
         local todo = true ;fi
 }
 # - - - Color me encrypted - - - #
-BlD=$(tput blink;tput bold;tput setaf 0)
-RrD=$(tput blink;tput bold;tput setaf 1)
-GrN=$(tput blink;tput bold;tput setaf 2)
-YeL=$(tput blink;tput bold;tput setaf 3)
-BlU=$(tput blink;tput bold;tput setaf 4)
-MaG=$(tput blink;tput bold;tput setaf 5)
-CyN=$(tput blink;tput bold;tput setaf 6)
-WhT=$(tput blink;tput bold;tput setaf 7)
-bLk=$(tput blink;tput setaf 0)
-rEd=$(tput blink;tput setaf 1)
-gRn=$(tput blink;tput setaf 2)
-yEl=$(tput blink;tput setaf 3)
-bLu=$(tput blink;tput setaf 4)
-mAg=$(tput blink;tput setaf 5)
-cYn=$(tput blink;tput setaf 6)
-wHt=$(tput blink;tput setaf 7)
-BLD=$(tput bold;tput setaf 0)
-RED=$(tput bold;tput setaf 1)
-GRN=$(tput bold;tput setaf 2)
-YEL=$(tput bold;tput setaf 3)
-BLU=$(tput bold;tput setaf 4)
-MAG=$(tput bold;tput setaf 5)
-CYN=$(tput bold;tput setaf 6)
-WHT=$(tput bold;tput setaf 7)
-blk=$(tput setaf 0)
-red=$(tput setaf 1)
-grn=$(tput setaf 2)
-yel=$(tput setaf 3)
-blu=$(tput setaf 4)
-mag=$(tput setaf 5)
-cyn=$(tput setaf 6)
-wht=$(tput setaf 7)
-nrm=$(tput sgr0)
-clr='\033[m' #GNU less command likes this better then echo -ne $(tput sgr0)
-Nl="s/^/$(tput setaf 7)/g" # sed -e ${Nl} -e ${nL} Will color 'nl' number lists
-nL="s/\t/$(echo -ne '\033[m')\t/g"
+evalColors() {
+    BlD=$(tput blink;tput bold;tput setaf 0)
+    RrD=$(tput blink;tput bold;tput setaf 1)
+    GrN=$(tput blink;tput bold;tput setaf 2)
+    YeL=$(tput blink;tput bold;tput setaf 3)
+    BlU=$(tput blink;tput bold;tput setaf 4)
+    MaG=$(tput blink;tput bold;tput setaf 5)
+    CyN=$(tput blink;tput bold;tput setaf 6)
+    WhT=$(tput blink;tput bold;tput setaf 7)
+    bLk=$(tput blink;tput setaf 0)
+    rEd=$(tput blink;tput setaf 1)
+    gRn=$(tput blink;tput setaf 2)
+    yEl=$(tput blink;tput setaf 3)
+    bLu=$(tput blink;tput setaf 4)
+    mAg=$(tput blink;tput setaf 5)
+    cYn=$(tput blink;tput setaf 6)
+    wHt=$(tput blink;tput setaf 7)
+    BLD=$(tput bold;tput setaf 0)
+    RED=$(tput bold;tput setaf 1)
+    GRN=$(tput bold;tput setaf 2)
+    YEL=$(tput bold;tput setaf 3)
+    BLU=$(tput bold;tput setaf 4)
+    MAG=$(tput bold;tput setaf 5)
+    CYN=$(tput bold;tput setaf 6)
+    WHT=$(tput bold;tput setaf 7)
+    blk=$(tput setaf 0)
+    red=$(tput setaf 1)
+    grn=$(tput setaf 2)
+    yel=$(tput setaf 3)
+    blu=$(tput setaf 4)
+    mag=$(tput setaf 5)
+    cyn=$(tput setaf 6)
+    wht=$(tput setaf 7)
+    nrm=$(tput sgr0)
+    clr='\033[m' #GNU less command likes this better then echo -ne $(tput sgr0)
+    Nl="s/^/$(tput setaf 7)/g" # sed -e ${Nl} -e ${nL} Will color 'nl' number lists
+    nL="s/\t/$(echo -ne '\033[m')\t/g"
+}
 #
 # - - - RUN - - - #
 parse_args ${@} ZZZ #The ZZZ is flag+value for-loop padding
