@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.6
+#   GpgWallet       GPLv3              v10.7
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
@@ -50,6 +50,7 @@ main() {
                 keyring)
                     echo -n "${val}" | ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
             esac
+            [[ -d ${WAL}/.git ]] && gitCommit
         ;;
         decrypt)
             local plaintext=$(${GPGde} -d ${wdir}/${obj})
@@ -235,11 +236,13 @@ gitSync() {
 }
 # - - - Git commit - - - #
 gitCommit() {
+    ${GIT} add ${dom}/${typ}/${obj}
     ${GIT} commit -m "pgw ${dom}/${typ}/${obj}"
+    gitSync
 }
 # - - - Git deletion - - - #
 gitRm() {
-    ${GIT} rm "${dom}/${typ}/${obj}" ;gitSync
+    ${GIT} rm "${dom}/${typ}/${obj}" ;gitCommit
 }
 # - - - Git undo - - - #
 gitUndo() {
