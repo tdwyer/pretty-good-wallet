@@ -17,6 +17,8 @@ Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
 -t  str         :Same as Search but view your wallet in a colored tree format
 " ; [[ ${1} == "--help" || ${1} == "-h" ]] && (echo "${HELP}" ; exit 0)
 GPG=$(which gpg) ;[[ ${?} -gt 0 ]] && (echo "Install gpg (GnuPG) >=2.0")
+GPGen="${GPG} -a -s --cipher-algo TWOFISH --digest-algo SHA512"
+GPGde="${GPG} -a --batch --quiet"
 SCREEN=$(which screen 2>/dev/null) 
 XCLIP=$(which xclip)
 XCS=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
@@ -34,26 +36,33 @@ main() {
         ;;
         tree)
             if [[ $(expr 4 + $(treeUI | wc -l)) -lt $(tput lines) ]] ;then
-                treeUI ;else treeUI -C | $PAGER ;fi
+                treeUI
+            else
+                treeUI -C | $PAGER
+            fi
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
-            [[ "${typ}" != "keyring" ]] && \
-                ${GPG} -r "${KEYID}" -o ${wdir}/${obj} -e ${val} || \
-                echo -n "${val}" | ${GPG} -e -r "${KEYID}" > ${wdir}/${obj}
+            case "${typ}" in
+                vault)
+                    ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e ${val}
+                ;;
+                keyring)
+                    echo -n "${val}" | ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
+            esac
         ;;
         decrypt)
-            local plaintext=$(${GPG} --batch --quiet -d ${wdir}/${obj})
+            local plaintext=$(${GPGde} -d ${wdir}/${obj})
             if [[ "${dst}" == "stdout" ]] ;then echo -n ${plaintext} ;exit 0 ;fi
             case "${dst}" in
                 clip)
                     echo -n ${plaintext} | ${XCLIP} -selection ${XCS[${sel}]} -in
                 ;;
                 screen)
-                    ${SCREEN} -S $STY -X register . ${plaintext}
+                    ${SCREEN} -S $STY -X register . "${plaintext}"
                 ;;
                 window)
-                    ${SCREEN} -S $STY -p "${sel}" -X stuff ${plaintext}
+                    ${SCREEN} -S $STY -p "${sel}" -X stuff "${plaintext}"
             esac
     esac ; exit ${?}
 }
@@ -73,7 +82,7 @@ parse_args() {
             -f)
                 typ='vault' ; val="${arg}"
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
-                [[ $(echo $obj |rev |cut -d '.' -f 1) != 'gpg' ]] && obj+=".gpg"
+                [[ $(echo $obj |rev |cut -d '.' -f 1) != 'asc' ]] && obj+=".asc"
             ;;
             -e)
                 cmd='encrypt'
@@ -111,7 +120,7 @@ validate() {
                         read -sp "Enter passwd: " val
                         echo; read -sp "Re-enter passwd: " v
                         if [[ ${val} != ${v} || -z ${val} ]] ;then
-                            echo 'Passwords did not match!' ; exit 203
+                            echo 'Passwords did not match!' ;exit 203
                         fi
                     fi
                 ;;
@@ -135,7 +144,7 @@ validate() {
                     fi
                 ;;
                 screen)
-                    [[ -z $STY ]] && echo ' - No $STY -' ;echo ${HELP} ;exit 103
+                    [[ -z $STY ]] && echo ' - No $STY -'
             esac
             [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
         ;;
@@ -150,8 +159,8 @@ validate() {
 treeUI() {
     cd ${WAL} ;a="--noreport --prune" ;s="*${str}*"
     for p in ${@} ;do a+=" ${p}" ;done
-    [[ ${typ} == "vault" ]] && s+=".gpg"
-    [[ ${typ} == "keyring" ]] && a+=" -I *.gpg"
+    [[ ${typ} == "vault" ]] && s+=".asc"
+    [[ ${typ} == "keyring" ]] && a+=" -I *.asc"
     a+=" -P "
     ${TREE} ${a} "${s}" ${dom}
 }
@@ -172,34 +181,40 @@ selectList() {
 }
 # - - - Gen select list - - - #
 genList() {
-    cd ${WAL} ;start_color=3 ;LN=1
+    cd ${WAL} ;start_color=2 ;LN=1
     for line in $(echo $index) ;do
         # Set color
         if [[ -z ${t} ]] ;then
             t='togle'
-            local c1=$(tput bold; tput setaf ${start_color})
-            local c2=$(tput bold; tput setaf $(expr $start_color + 1))
-            local c3=$(tput bold; tput setaf $(expr $start_color + 2))
+            local c1=$(tput bold;tput setaf ${start_color})
+            local c2=$(tput bold;tput setaf $(expr $start_color + 1))
+            local c3=$(tput bold;tput setaf $(expr $start_color + 2))
+            local d1=$(tput bold;tput setaf 0)
+            local d2=$(tput bold;tput setaf 0)
+            local d3=$(tput bold;tput setaf 0)
         else
             t=''
             local c1=$(tput setaf ${start_color})
             local c2=$(tput setaf $(expr $start_color + 1))
             local c3=$(tput setaf $(expr $start_color + 2))
+            local d1=$(tput setaf ${start_color})
+            local d2=$(tput setaf $(expr $start_color + 1))
+            local d3=$(tput setaf $(expr $start_color + 2))
         fi
         # align columns
         dom="$(echo ${line} |cut -d '/' -f 1)"
         typ="$(echo ${line} |cut -d '/' -f 2)"
         obj="$(echo ${line} |cut -d '/' -f 3)"
         ln="" ;n=$(expr 4 - $(echo -n ${LN} |wc -c))
-        while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;ln+=" " ;done ;ln+="${LN} - "
-        n=$(expr 16 - $(echo -n ${dom} |wc -c))
+        while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;ln+=" " ;done ;ln+="${LN}"
+        n=$(expr 26 - $(echo -n ${dom} |wc -c))
         while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
-        n=$(expr 12 - $(echo -n ${typ} |wc -c))
+        n=$(expr 10 - $(echo -n ${typ} |wc -c))
         while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
-        echo -ne "${c3}${ln}${clr}" ;LN=$(expr $LN + 1)
+        echo -ne "${c3}${ln}${nrm}${d1} - ${clr}" ;LN=$(expr $LN + 1)
         echo -ne "${c1}${dom}${clr}"
-        echo -ne "${c2}${typ}${clr}"
-        echo -e "${c3}${obj}${clr}"
+        echo -ne "${d2}- ${nrm}${c2}${typ}${clr}"
+        echo -e "${d3}- ${nrm}${c3}${obj}${clr}"
     done ;
 }
 #
