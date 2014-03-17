@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.7.2.devel
+#   GpgWallet       GPLv3              v10.7.2
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
@@ -55,17 +55,25 @@ main() {
             [[ -d ${WAL}/.git ]] && gitCommit
         ;;
         decrypt)
-            local plaintext=$(${GPGde} -d ${wdir}/${obj})
-            if [[ "${dst}" == "stdout" ]] ;then echo -n ${plaintext} ;exit 0 ;fi
             case "${dst}" in
+                stdout)
+                    if [[ -z ${sel} ]] ;then
+                        ${GPGde} -d ${wdir}/${obj}
+                    else
+                        ${GPGde} -o ${sel} -d ${wdir}/${obj}
+                    fi
+                ;;
                 clip)
-                    echo -n ${plaintext} | ${XCLIP} -selection ${XCS[${sel}]} -in
+                    ${GPGde} -d ${wdir}/${obj} | ${XCLIP}\
+                    -selection ${XCS[${sel}]} -in
                 ;;
                 screen)
-                    ${SCREEN} -S $STY -X register . "${plaintext}"
+                    ${SCREEN}\
+                    -S $STY -X register . "$(${GPGde} -d ${wdir}/${obj})"
                 ;;
                 window)
-                    ${SCREEN} -S $STY -p "${sel}" -X stuff "${plaintext}"
+                    ${SCREEN}\
+                    -S $STY -p "${sel}" -X stuff "$(${GPGde} -d ${wdir}/${obj})"
             esac
         ;;
         update)
@@ -94,7 +102,7 @@ parse_args() {
                 cmd='encrypt'
             ;;
             -stdout)
-                cmd='decrypt' ; dst='stdout'
+                cmd='decrypt' ; dst='stdout' ; sel="${arg}"
             ;;
             -clip)
                 cmd='decrypt' ; dst='clip' ; sel="${arg}"
@@ -104,9 +112,6 @@ parse_args() {
             ;;
             -window)
                 cmd='decrypt' ; dst='window' ; sel="${arg}"
-            ;;
-            -s)
-                cmd='find' ; str="${arg}"
             ;;
             -t)
                 cmd='tree' ; str="${arg}"
@@ -118,6 +123,20 @@ parse_args() {
 }
 # - - - Check for errors - - - #
 validate() {
+    local uniques="-e -stdout -clip -screen -window -t -update"
+    local allOpts="ZZZ -d -k -v -f ${uniques}"
+    local x=0 ;local y=0 # I know there is a joke here somewhere...One ring?
+    for item in ${@} ;do
+        [[ "${uniques}" =~ "${item}" ]] && x=$(expr ${x} + 1)
+        [[ "-k -f" =~ "${item}" ]] && y=$(expr ${y} + 1)
+        if [[ ${unique} -gt 1 ]] ;then
+            echo "Can only give one command which encrypts or decrypts"
+            exit 2
+        elif [[ ${otype} -gt 1 ]] ;then
+            echo "Can not give -f and -k at the same time"
+            exit 2
+        fi
+    done
     case ${cmd} in
         encrypt)
             if [[ -z ${dom} || -z ${typ} || -z ${obj} ]] ;then
@@ -142,6 +161,14 @@ validate() {
                 echo "${HELP}" ; exit 101
             fi
             case ${dst} in
+                stdout)
+                    for item in ${allOpts} ;do
+                        if [[ "${sel}" == "${item}" ]] ;then
+                            sel=""
+                            break
+                        fi
+                    done
+                ;;
                 clip)
                     [[ -z ${XCS[${sel}]} ]] && sel=1
                 ;;
@@ -153,12 +180,15 @@ validate() {
                     fi
                 ;;
                 screen)
-                    [[ -z $STY ]] && echo ' - No $STY -'
+                    if [[ -z $STY ]] ;then
+                        echo ' - No $STY -'
+                        exit 103
+                    fi
             esac
             [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
         ;;
         tree)
-            [[ "-d -k -v -f ZZZ" =~ "${str}" ]] && str=''
+            [[ "${allOpts}" =~ "${str}" ]] && str=''
         ;;
         update)
             local ok=true
@@ -220,15 +250,6 @@ genList() {
         echo -e "${clr}"
     done ;
 }
-#
-# The idea is to transparently use Git to provide:
-#   password recovery
-#   remote backup
-#   device sync
-# All with an extremely common and well supported program in the standard way
-# Even if PGW dies Git will still work.
-# Exactly the reason I'm using GnuPG.
-#
 # - - - Git Commit, push, pull, merge - - - #
 gitSync() {
     gitPull
