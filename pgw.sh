@@ -183,40 +183,30 @@ selectList() {
 # - - - Gen select list - - - #
 genList() {
     evalColors
-    cd ${WAL} ;start_color=2 ;LN=1
+    cd ${WAL} ;local color_1=4 ;local color_2=7 ;local ln=0
     for line in $(echo $index) ;do
+        local ln=$(expr $ln + 1)
         # Set color
         if [[ -z ${t} ]] ;then
-            t='togle'
-            local c1=$(tput bold;tput setaf ${start_color})
-            local c2=$(tput bold;tput setaf $(expr $start_color + 1))
-            local c3=$(tput bold;tput setaf $(expr $start_color + 2))
-            local d1=$(tput bold;tput setaf 0)
-            local d2=$(tput bold;tput setaf 0)
-            local d3=$(tput bold;tput setaf 0)
+            local t='togle'
+            local color=$(tput setaf ${color_1})
         else
-            t=''
-            local c1=$(tput setaf ${start_color})
-            local c2=$(tput setaf $(expr $start_color + 1))
-            local c3=$(tput setaf $(expr $start_color + 2))
-            local d1=$(tput setaf ${start_color})
-            local d2=$(tput setaf $(expr $start_color + 1))
-            local d3=$(tput setaf $(expr $start_color + 2))
+            local t=''
+            local color=$(tput setaf ${color_2})
         fi
         # align columns
         dom="$(echo ${line} |cut -d '/' -f 1)"
         typ="$(echo ${line} |cut -d '/' -f 2)"
         obj="$(echo ${line} |cut -d '/' -f 3)"
-        ln="" ;n=$(expr 4 - $(echo -n ${LN} |wc -c))
-        while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;ln+=" " ;done ;ln+="${LN}"
         n=$(expr 26 - $(echo -n ${dom} |wc -c))
         while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
         n=$(expr 10 - $(echo -n ${typ} |wc -c))
         while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
-        echo -ne "${c3}${ln}${nrm}${d1} - ${clr}" ;LN=$(expr $LN + 1)
-        echo -ne "${c1}${dom}${clr}"
-        echo -ne "${d2}- ${nrm}${c2}${typ}${clr}"
-        echo -e "${d3}- ${nrm}${c3}${obj}${clr}"
+        echo -ne "${color}"
+        echo -ne "-> ${dom}"
+        echo -ne "- ${typ}"
+        echo -ne "${ln} - ${obj}"
+        echo -e "${clr}"
     done ;
 }
 #
