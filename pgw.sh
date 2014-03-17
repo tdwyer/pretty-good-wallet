@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.7
+#   GpgWallet       GPLv3              v10.7.2.devel
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
@@ -15,7 +15,10 @@ Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
 -window #       :Send to stdin of gnu-screen window Number
 -s  str         :Search wallet with: -d, -k, -v and/or string found in name
 -t  str         :Same as Search but view your wallet in a colored tree format
+-update         :Pull latest wallet from git server
 " ; [[ ${1} == "--help" || ${1} == "-h" ]] && (echo "${HELP}" ; exit 0)
+[[ -z $GNUPGHOME ]] && GNUPGHOME="$HOME/.gnupg" ;WAL="$GNUPGHOME/wallet"
+KEYID="$(cat "${WAL}/.KEYID")"
 GPG=$(which gpg) ;[[ ${?} -gt 0 ]] && (echo "Install gpg (GnuPG) >=2.0")
 GPGen="${GPG} -a -s --cipher-algo TWOFISH --digest-algo SHA512"
 GPGde="${GPG} -a --batch --quiet"
@@ -26,8 +29,7 @@ FIND=$(which find)
 TREE=$(which tree)
 [[ -z $PAGER ]] && PAGER="less"
 [[ $PAGER == "less" ]] && LESS="--RAW-CONTROL-CHARS"
-[[ -z $GNUPGHOME ]] && GNUPGHOME="$HOME/.gnupg" ;WAL="$GNUPGHOME/wallet"
-KEYID="$(cat "${WAL}/.KEYID")"
+GIT="$(which git) -C ${WAL}"
 # - - - List, Encrypt, or Decrypt objects - - - #
 main() {
     case "${cmd}" in
@@ -65,6 +67,9 @@ main() {
                 window)
                     ${SCREEN} -S $STY -p "${sel}" -X stuff "${plaintext}"
             esac
+        ;;
+        update)
+            gitPull
     esac ; exit ${?}
 }
 # - - - Parse the arguments - - - #
@@ -105,6 +110,9 @@ parse_args() {
             ;;
             -t)
                 cmd='tree' ; str="${arg}"
+            ;;
+             -update)
+                cmd="update"
         esac ; flag="${arg}"
     done ; wdir="${WAL}/${dom}/${typ}" ; validate
 }
@@ -152,6 +160,9 @@ validate() {
         tree)
             [[ "-d -k -v -f ZZZ" =~ "${str}" ]] && str=''
         ;;
+        update)
+            local ok=true
+        ;;
         *)
             echo "${HELP}" ; exit 255
     esac ; main
@@ -183,16 +194,16 @@ selectList() {
 # - - - Gen select list - - - #
 genList() {
     evalColors
-    cd ${WAL} ;local color_1=4 ;local color_2=7 ;local ln=0
+    cd ${WAL} ;local color_1=${BLU} ;local color_2=${wht} ;local ln=0
     for line in $(echo $index) ;do
         local ln=$(expr $ln + 1)
         # Set color
         if [[ -z ${t} ]] ;then
             local t='togle'
-            local color=$(tput setaf ${color_1})
+            local color=${color_1}
         else
             local t=''
-            local color=$(tput setaf ${color_2})
+            local color=${color_2}
         fi
         # align columns
         dom="$(echo ${line} |cut -d '/' -f 1)"
@@ -219,38 +230,54 @@ genList() {
 # Exactly the reason I'm using GnuPG.
 #
 # - - - Git Commit, push, pull, merge - - - #
-GIT="$(which git) -C ${WAL}"
 gitSync() {
-    ${GIT} pull origin master
-    ${GIT} push origin master
+    gitPull
+    gitPush
 }
 # - - - Git commit - - - #
 gitCommit() {
-    ${GIT} add ${dom}/${typ}/${obj}
+    gitAdd
     ${GIT} commit -m "pgw ${dom}/${typ}/${obj}"
     gitSync
 }
 # - - - Git deletion - - - #
 gitRm() {
-    ${GIT} rm "${dom}/${typ}/${obj}" ;gitCommit
+    ${GIT} rm "${dom}/${typ}/${obj}"
+    gitCommit
 }
 # - - - Git undo - - - #
 gitUndo() {
     local todo = true
 }
+# - - - Git add - - - #
+gitAdd() {
+    case "${1}" in
+        addFile)
+            local todo=true
+        ;;
+        addFolder)
+            local todo=true
+        ;;
+        *)
+            # Add just processed object
+            ${GIT} add ${dom}/${typ}/${obj}
+    esac
+}
+# - - - Git pull - - - #
+gitPull() {
+    ${GIT} pull origin master
+}
+# - - - Git push - - - #
+gitPush() {
+    ${GIT} push origin master
+}
 # - - - Git init - - - #
 gitInit() {
-    # If ${WAL}/.GPWGIT file exists
-    # git init
-    # Ignore .KEYID
-    # Perhaps allow for basic config like name/email in .GPWGIT
-    #
-    if [[ -f ${WAL}/.gitignore ]] ;then
-        local todo = true ;fi
+    local todo = true
 }
 # - - - Color me encrypted - - - #
 evalColors() {
-    BlD=$(tput blink;tput bold;tput setaf 0)
+    BlK=$(tput blink;tput bold;tput setaf 0)
     RrD=$(tput blink;tput bold;tput setaf 1)
     GrN=$(tput blink;tput bold;tput setaf 2)
     YeL=$(tput blink;tput bold;tput setaf 3)
@@ -266,7 +293,7 @@ evalColors() {
     mAg=$(tput blink;tput setaf 5)
     cYn=$(tput blink;tput setaf 6)
     wHt=$(tput blink;tput setaf 7)
-    BLD=$(tput bold;tput setaf 0)
+    BLK=$(tput bold;tput setaf 0)
     RED=$(tput bold;tput setaf 1)
     GRN=$(tput bold;tput setaf 2)
     YEL=$(tput bold;tput setaf 3)
@@ -291,4 +318,4 @@ evalColors() {
 # - - - RUN - - - #
 parse_args ${@} ZZZ #The ZZZ is flag+value for-loop padding
 exit 1
-# vim: set ts=4 sw=4 tw=80 et
+# vim: set ts=4 sw=4 tw=80 et :
