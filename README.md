@@ -8,25 +8,25 @@ PGW - Pretty Good Wallet
 * Have you ever wanted to easily run *Your own*  password sync server?
 
 
-I've had all these problems and more but never found any password manager that could solve them. What has bothered me the most is that each individual function a password manager preforms has already been mastered by another program. So, I have decided to create a password manager/agent by using the best tool available for each specific task instead of reinventing the wheel badly. The maximum level of *Compatibility* and *Reliability* by using standard tool in standard ways.
+I've had all these problems and more but never found any password manager that could solve all them. What has bothered me the most is that each individual function a password manager preforms has already been mastered by another program. So, I have decided to create a password manager/agent by using the best tools available for each specific task. The maximum level of *Compatibility* and *Reliability* is achieved by using standard tools in standard ways.
 
 
-Essentially, PGW ties together commonly trusted tools into a Password Manager and Session Agent
+Essentially, PGW ties together commonly trusted software projects into a Password Manager and Session Agent
 
 The projects used by PGW include:
 
-[GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
-[Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
-[OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
-[kppy Python API  to KeePass 1.x files](http://raymontag.github.io/kppy "kppy Python API  to KeePass 1.x files")
-[xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
+* [GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
+* [Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
+* [OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
+* [kppy Python API  to KeePass 1.x files](http://raymontag.github.io/kppy "kppy Python API  to KeePass 1.x files")
+* [xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
 
 
 Project Status
 --------------
 
 
-PGW is currently usable from the shell and as a Python Keyring backend, but there is still a lot of work to be done. However, even at it's current stage PGW provides many useful features which make it something to consider.
+PGW is currently fully usable from the command line and as a Python Keyring backend. There is more work to be done, but at it's current stage PGW provides many useful features which make it a solution to consider.
 
 
 PGW Wallet Structure
@@ -34,11 +34,11 @@ PGW Wallet Structure
 
 
 * **Wallet**
-The wallet is a directory located at $GNUPGHOME/wallet by default. Found in the root of this directory is the file `.KEYID` which contains a space separated list of GPG UID's or key fingerprint to encrypt to. Also found here are directories for each **Domain**.
+  The wallet is a directory located at $GNUPGHOME/wallet by default. Found in the root of this directory is the file `.KEYID` which contains a space separated list of GPG UID's or key fingerprint to encrypt to. Also found here are directories for each **Domain**.
 
 
 * **Domain**
-A *Domain* directory contains a **Keyring** directory and a **Vault** directory.
+  A *Domain* directory contains a **Keyring** directory and a **Vault** directory.
 
 
 * **Keyring**
@@ -46,15 +46,15 @@ Inside a *Keyring* directory is where you will find all of the **Keys** saved fo
 
 
 * **Key**
-In PGW *Keys* are used to store *Clipboardable Strings*, such as *Passwords*, and *Usernames*. If the Username is not confidential, then it is advantages to create a key with the name of your accounts username and have it contain your encrypted password. Doing this improves search ability. However, it is not required nor are *Key* limited to only storing passwords.
+  In PGW *Keys* are used to store *Clipboardable Strings*, such as *Passwords*, and *Usernames*. If the Username is not confidential, then it is advantages to the key after your username and encrypt your password. Doing this improves search ability. However, it is not required, nor are *Keys* limited to password storage.
 
 
 * **Vault**
-Inside a *Vault* is where you can store encrypted files. There are many more things on a computer which need to be protected and these *Vaults* provide an easy way to do that. Given that each *Domain* has it's own *Vault*, keeping these files organized is also made much easier. Encrypted files in the vault are also *backed up* to remote location and *synchronized* across all your computers with Git, so you will never lose them.
+  Inside a *Vault* is where you can store encrypted files. There are many more things on a computer which need to be protected and these *Vaults* provide an easy way to do that. Given that each *Domain* has it's own *Vault*, keeping these files organized is also made much easier. Encrypted files in the vault are also *backed up* to remote location and *synchronized* across all your computers with Git, so you will never lose them.
 
   * NOTE: If you store a file named `url` in the vault it will be imported into KeePass during PGW export-to-keepass.
   * NOTE: If you store a file named `comment` in the vault it will be imported into KeePass durring PGW export-to-keepass.
-    * NOTE: :P export-to-keepass is not integrated just yet, but can be preformed from a Python shell
+    * NOTE: `export-to-keepass` is not integrated just yet :p, but it is just around the corner
 
 
 Confidentiality, Integrity, and Availability (CIA)
@@ -160,23 +160,12 @@ User Interface
 --------------
 
 
-The user interface is command line based and has no GUI at the moment.
+The user interface is command line based. With it you can encrypt keys and files. Then you can access them in a few ways, such as send to the GNU Screen copy buffer `-screen`, GNU Screen window `-window #`, cursor position `-stdout`, or wire to a file `-stdout file.txt`. The X11 *Clipboard* is also destination and it selected with `-clip 1`, `2`, or `3` where `1` is Primary selection, `2` Secondary, and `3` is the Clipboard.
 
 
-- **Gnu Screen**
-  - **Send to Copy Buffer**
-    - `pgw -d example.com -screen`
-      - Okay, key *alice* is item 1, `1` and `Enter`
-    - Now just use the your configured keybinding to output the Copy Buffer
-      - Default Screen Keybinding is `Ctrl-A` `]`
-  - **Send to Window**
-      - In Window 3 enter `pgw -d example.com -window 2 -k alice`
-        - The password for alice@example.com is sent to the last cursor position in Window 2
-- **Direct Comman Line Invocation**
-  - Retrieved Keys and Files with a single command
-  - Currently the only way to add Keys and Files to your Vault.
-    - However, PGW provides intuitive -flags and a helpful `--help`
-- **Search Wallet in Tree View**
+PGW also provide a couple options to improve locating items and accessing them.
+
+- **Search the Wallet in Tree View**
   - The `tree` command is used for Fancy and Readable View of the wallet
     - If the Tree will not fit in the terminal, `less` is opened automatically
   - Search Wallet for Files and Keys
@@ -186,29 +175,28 @@ The user interface is command line based and has no GUI at the moment.
     - Combined any, all, or none of these search options
 - **Select from Numbered List**
   - Don't know exactly what your looking for? Heres a list, Enter the number...
-    - Just type `pgw -clip 3`
+    - Just type `pgw -screen`
       - Then enter the number of the item you want sent to the Clipboard.
-    - If you know the Domain you can shorten the list `pgw -clip 3 -d example.com`
+    - If you know the Domain you can shorten the list `pgw -screen -d example.com`
       - Now only options for *example.com* are shown in the list
 
-### Encrypting Keys/Passwords and Files
+### Examples
 
 
-**Encrypting Password and Files **
-  - Adding password, or *Key Value Pairs*, could not be easier
-    - Enter Password with Interactive Prompt
-      - `pgw -d example.com -k alice -e` And Enter and Re-Enter the password
-        - Get username Confidentiality
-          - `pgw -d example.com -k username -e`
-          - `pgw -d example.com -k password -e`
-        - Get URL Confidentiality
-          - `pgw -d favorateWebsite -k username -e`
-          - Save the url to a file named *url* and add it to the domain's Vault
-            - `pgw -d favorateWebsite -v url -e`
-    - Enter Password as Parameter
-      - `-v $Value` can added for scripted addition of passwords/key values
+**Adding website account**
+  - Enter password with the interactive prompt
+    - `pgw -d example.com -k alice -e` then enter your password at the prompt
+      - For username confidentiality
+        - `pgw -d example.com -k username -e`
+        - `pgw -d example.com -k password -e`
+      - For url confidentiality
+        - `pgw -d website01 -k username -e`
+        - Save the url to a file named *url* and add it to the domain's Vault
+          - `pgw -d website01 -v url -e`
+  - Enter Password as Parameter
+    - `-v $Value` can added for scripted addition of passwords/key values
 
 
-**Encrypt Any File to a Vault**
+**Adding a file to the vault**
   - PGW makes it easy to store related documents 
-    - `pgw -d exampletaxservice.com -v EZ1040-2013.pdf -e`
+    - `pgw -d exampleTaxService.com -v EZ1040-2013.pdf -e`
