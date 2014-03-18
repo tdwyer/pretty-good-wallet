@@ -46,11 +46,11 @@ Inside a *Keyring* directory is where you will find all of the **Keys** saved fo
 
 
 * **Key**
-  In PGW *Keys* are used to store *Clipboardable Strings*, such as *Passwords*, and *Usernames*. If the Username is not confidential, then it is advantages to the key after your username and encrypt your password. Doing this improves search ability. However, it is not required, nor are *Keys* limited to password storage.
+  In PGW *Keys* are used to store *Clipboardable Strings*, such as *Passwords*, and *Usernames*. If the Username is not confidential, then it is advantages to use your username as the *Key* name and encrypt your password. Doing this improves search ability. However, it is not required, nor are *Keys* limited to password storage.
 
 
 * **Vault**
-  Inside a *Vault* is where you can store encrypted files. There are many more things on a computer which need to be protected and these *Vaults* provide an easy way to do that. Given that each *Domain* has it's own *Vault*, keeping these files organized is also made much easier. Encrypted files in the vault are also *backed up* to remote location and *synchronized* across all your computers with Git, so you will never lose them.
+  Inside a *Vault* is where you can store encrypted files. There are many more things on a computer which need to be protected and these *Vaults* provide an easy way to do that. Given that each *Domain* has it's own *Vault*, keeping these files organized is made much easier. Encrypted files are also *backed up* to your remote server and *synchronized* across all your computers with Git along with the Keys.
 
   * NOTE: If you store a file named `url` in the vault it will be imported into KeePass during PGW export-to-keepass.
   * NOTE: If you store a file named `comment` in the vault it will be imported into KeePass durring PGW export-to-keepass.
@@ -73,7 +73,7 @@ If a functionality is not found here, it may very well be available. The beauty 
   - **Processing**
     - GnuPG is given the path and name of file to encrypt not the contents
     - GnuPG is piped passwords to be encrypted.
-      - Work is ongoing to utilize `pinentry` instead
+      - Work is ongoing to use `pinentry` instead
 
 **Integrity**
   - **Transmission**
@@ -100,8 +100,8 @@ If a functionality is not found here, it may very well be available. The beauty 
     - GPG-Agent provides *session management*
 
 
-Interoperability with Other Managers and Program
-------------------------------------------------
+Interoperability with Other Managers and Programs
+-------------------------------------------------
 
 
 - **Python Keyring**
