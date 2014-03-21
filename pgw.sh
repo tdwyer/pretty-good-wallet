@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.8
+#   GpgWallet       GPLv3              v10.8.1
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
@@ -17,6 +17,8 @@ Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
 -t  str         :Same as Search but view your wallet in a colored tree format
 -update         :Pull latest wallet from git server
 -accnt  name    :Account pair (user:name pass:name)
+-chrono commit  :View a past verion of an object, list select or commit
+-revert commit  :Revert an object to an earlier state, list select or commit
 "
 set_wallet() {
   local c="$(echo "${1}" | \
