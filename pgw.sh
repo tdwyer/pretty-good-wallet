@@ -1,5 +1,5 @@
 #!/bin/bash
-#   GpgWallet       GPLv3              v10.7.2
+#   GpgWallet       GPLv3              v10.8
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 HELP="
 Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
@@ -16,23 +16,77 @@ Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
 -s  str         :Search wallet with: -d, -k, -v and/or string found in name
 -t  str         :Same as Search but view your wallet in a colored tree format
 -update         :Pull latest wallet from git server
-" ; [[ ${1} == "--help" || ${1} == "-h" ]] && (echo "${HELP}" ; exit 0)
-[[ -z $GNUPGHOME ]] && GNUPGHOME="$HOME/.gnupg" ;WAL="$GNUPGHOME/wallet"
+-accnt  name    :Account pair (user:name pass:name)
+"
+set_wallet() {
+  local c="$(echo "${1}" | \
+              rev | \
+              cut -d '/' -f 1 | \
+              rev | \
+              cut -d '.' -f 1)"
+  local w="$(echo "${1}" | \
+              rev | \
+              cut -d '/' -f 1 | \
+              rev | \
+              cut -d '.' -f 2)"
+  if [[ "${c}" == "${w}" ]] ;then
+    WALLET="wallet"
+  else
+    WALLET="${w}"
+  fi
+}
+set_wallet ${0}
+[[ -z ${GNUPGHOME} ]] && GNUPGHOME="${HOME}/.gnupg"
+WAL="${GNUPGHOME}/${WALLET}"
 KEYID="$(cat "${WAL}/.KEYID")"
 GPG=$(which gpg) ;[[ ${?} -gt 0 ]] && (echo "Install gpg (GnuPG) >=2.0")
 GPGen="${GPG} -a -s --cipher-algo TWOFISH --digest-algo SHA512"
 GPGde="${GPG} -a --batch --quiet"
-SCREEN=$(which screen 2>/dev/null) 
+[[ -z ${PAGER} ]] && PAGER=$(which less)
+[[ ${PAGER} == "less" ]] && LESS="--RAW-CONTROL-CHARS"
 XCLIP=$(which xclip)
 XCS=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
+SCREEN=$(which screen 2>/dev/null) 
 FIND=$(which find)
 TREE=$(which tree)
-[[ -z $PAGER ]] && PAGER="less"
-[[ $PAGER == "less" ]] && LESS="--RAW-CONTROL-CHARS"
 GIT="$(which git) -C ${WAL}"
-# - - - List, Encrypt, or Decrypt objects - - - #
+# - - - Main - - - #
 main() {
+    parse_args ${@} ZZZ #pad for-args with ZZZ
+    case "${meta}" in
+        accnt)
+            local accnt_name="${obj}"
+            local items="user pass"
+            for item in ${items} ;do
+                echo
+                typ='keyring'
+                obj="${item}:${accnt_name}"
+                validate
+                run_cmd
+                val=''
+            done
+        ;;
+        chrono)
+            validate
+            if [[ -z ${treeish} ]] ;then
+                chronoSelect
+                gitChronoVision
+            else
+                gitChronoVision
+            fi
+        ;;
+        *)
+            validate
+            run_cmd
+    esac
+}
+# - - - List, Encrypt, or Decrypt objects - - - #
+run_cmd() {
+    local wdir="${WAL}/${dom}/${typ}"
     case "${cmd}" in
+        help)
+            echo "${help}"
+        ;;
         find)
             findUI
         ;;
@@ -40,19 +94,20 @@ main() {
             if [[ $(expr 4 + $(treeUI | wc -l)) -lt $(tput lines) ]] ;then
                 treeUI
             else
-                treeUI -C | $PAGER
+                treeUI -C | ${PAGER}
             fi
         ;;
         encrypt)
             [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
+            cd ${wdir}
             case "${typ}" in
                 vault)
-                    ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e ${val}
+                    ${GPGen} --yes -r "${KEYID}" -o ${wdir}/${obj} -e ${val}
                 ;;
                 keyring)
-                    echo -n "${val}" | ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
+                    echo -n "${val}" | ${GPGen} --yes -r "${KEYID}" -o ${wdir}/${obj} -e
             esac
-            [[ -d ${WAL}/.git ]] && gitCommit
+            [[ -d ${WAL}/.git ]] && gitSync
         ;;
         decrypt)
             case "${dst}" in
@@ -78,14 +133,28 @@ main() {
         ;;
         update)
             gitPull
-    esac ; exit ${?}
+        ;;
+        revert)
+            if [[ -z ${treeish} ]] ;then
+                chronoSelect
+                gitRevert
+            else
+                gitRevert
+            fi
+    esac
 }
 # - - - Parse the arguments - - - #
 parse_args() {
     flags='' ;for arg in ${@} ;do
         case "${flag}" in
+            -h|--help)
+                cmd="help"
+            ;;
             -d)
                 dom="${arg}"
+            ;;
+            -accnt)
+                meta="accnt" ; obj="${arg}"
             ;;
             -k)
                 typ='keyring' ; obj="${arg}"
@@ -94,7 +163,7 @@ parse_args() {
                 val="${arg}"
             ;;
             -f)
-                typ='vault' ; val="${arg}"
+                typ='vault' ; val="$(readlink -f ${arg})"
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
                 [[ $(echo $obj |rev |cut -d '.' -f 1) != 'asc' ]] && obj+=".asc"
             ;;
@@ -118,26 +187,47 @@ parse_args() {
             ;;
              -update)
                 cmd="update"
+            ;;
+            -chrono)
+                meta="chrono" ; treeish="${args}"
+            ;;
+            -revert)
+                cmd="revert" ; treeish="${args}"
         esac ; flag="${arg}"
-    done ; wdir="${WAL}/${dom}/${typ}" ; validate
+    done
 }
 # - - - Check for errors - - - #
 validate() {
     local uniques="-e -stdout -clip -screen -window -t -update"
-    local allOpts="ZZZ -d -k -v -f ${uniques}"
-    local x=0 ;local y=0 # I know there is a joke here somewhere...One ring?
+    local opts=" ZZZ -chrono -revert -d -k -v -f ${uniques}"
+    local uniqueN=0 ;local otypeN=0 # I know there is a joke here somewhere...One ring?
     for item in ${@} ;do
-        [[ "${uniques}" =~ "${item}" ]] && x=$(expr ${x} + 1)
-        [[ "-k -f" =~ "${item}" ]] && y=$(expr ${y} + 1)
-        if [[ ${unique} -gt 1 ]] ;then
+        for unique in uniques ;do
+            [[ "${unique}" == "${item}" ]] && uniqueN=$(expr ${x} + 1)
+        done
+        for otype in "-k -f" ;do
+            [[ "${otype}" == "${item}" ]] && otypeN=$(expr ${y} + 1)
+        done
+        if [[ ${uniqueN} -gt 1 ]] ;then
             echo "Can only give one command which encrypts or decrypts"
-            exit 2
-        elif [[ ${otype} -gt 1 ]] ;then
+            exit 200
+        elif [[ ${otypeN} -gt 1 ]] ;then
             echo "Can not give -f and -k at the same time"
-            exit 2
+            exit 200
         fi
     done
+    for o in ${opts} ;do
+        [[ "${o}" == "${dom}" ]] && dom=''
+        [[ "${o}" == "${obj}" ]] && obj=''
+        [[ "${o}" == "${val}" ]] && val=''
+        [[ "${o}" == "${sel}" ]] && sel=''
+        [[ "${o}" == "${str}" ]] && str=''
+        [[ "${o}" == "${treeish}" ]] && treeish=''
+    done
     case ${cmd} in
+        help)
+            local ok=true #takes no args
+        ;;
         encrypt)
             if [[ -z ${dom} || -z ${typ} || -z ${obj} ]] ;then
                 echo "${HELP}" ; exit 201
@@ -145,29 +235,28 @@ validate() {
             case ${typ} in
                 keyring)
                     if [[ -z ${val} ]] ;then
-                        read -sp "Enter passwd: " val
-                        echo; read -sp "Re-enter passwd: " v
-                        if [[ ${val} != ${v} || -z ${val} ]] ;then
-                            echo 'Passwords did not match!' ;exit 203
-                        fi
+                        case "${obj}" in
+                            url|user:*)
+                                ask_prompt
+                            ;;
+                            *)
+                                ask_silent
+                        esac
                     fi
+                    [[ -z ${val} ]] && exit 202
                 ;;
                 vault)
-                    if [[ -z ${val} ]] ;then echo ${HELP} ;exit 202 ;fi
+                    if [[ -z ${val} ]] ;then echo ${HELP} ;exit 203 ;fi
             esac
         ;;       
         decrypt)
+            [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
             if [[ ! "stdout clip screen window" =~ ${dst} ]] ;then
-                echo "${HELP}" ; exit 101
+                echo "${HELP}" ; exit 204
             fi
             case ${dst} in
                 stdout)
-                    for item in ${allOpts} ;do
-                        if [[ "${sel}" == "${item}" ]] ;then
-                            sel=""
-                            break
-                        fi
-                    done
+                    local ok=true #checking error in: for o in ${opts}
                 ;;
                 clip)
                     [[ -z ${XCS[${sel}]} ]] && sel=1
@@ -176,26 +265,116 @@ validate() {
                     $(expr ${sel} + 1 1>/dev/null 2>&1)
                     if [[ ! ${?} -eq 0 ]] ;then
                         echo "Destination Window number: ${sel} :is invalid"
-                        echo "${HELP}" ; exit 102
+                        echo "${HELP}" ; exit 205
                     fi
                 ;;
                 screen)
                     if [[ -z $STY ]] ;then
-                        echo ' - No $STY -'
-                        exit 103
+                        echo ' - No $STY for GNU Screen found -'
+                        exit 206
                     fi
             esac
-            [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
         ;;
         tree)
-            [[ "${allOpts}" =~ "${str}" ]] && str=''
+            local ok=true #checking error in: for o in ${opts}
         ;;
         update)
-            local ok=true
+            local ok=true #takes no args
+        ;;
+        revert)
+            [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
         ;;
         *)
-            echo "${HELP}" ; exit 255
-    esac ; main
+            echo "${HELP}" ; exit 250
+    esac
+}
+# - - - Ask no echo - - - #
+ask_silent() {
+    read -sp "Enter value for ${obj}: " val
+    echo; read -sp "Re-enter value for ${obj}: " v
+    if [[ ${val} != ${v} || -z ${val} ]] ;then
+        echo 'Values did not match!'
+        val=""
+    fi
+}
+# - - - Ask echo - - - #
+ask_prompt() {
+    read -p "Enter ${obj} value: " val
+    echo; read -p "Set ${obj} value (y/n): " v
+    if [[ ${v,,} != "y" ]] ;then
+        echo "Aborting. . ."
+        val=""
+    fi
+}
+# - - - Sync repos - - - #
+gitSync() {
+    gitAdd
+    gitPull
+    gitCommit
+    gitPush
+}
+# - - - Delete Object - - - #
+gitRemove() {
+    local todo = true
+    #gitRm
+    #gitSync
+}
+# - - - Git init - - - #
+gitInit() {
+    local todo = true
+}
+# - - - Git pull - - - #
+gitPull() {
+    ${GIT} pull origin master
+}
+# - - - Git add - - - #
+gitAdd() {
+    ${GIT} add --all
+}
+# - - - Git commit - - - #
+gitCommit() {
+    local msg="${dom}/${typ}/${obj} ${treeish} [${cmd}] $(date '+%F %T') ${USER}@${HOSTNAME}"
+    ${GIT} commit -m "pgw ${msg}"
+}
+# - - - Git push - - - #
+gitPush() {
+    ${GIT} push origin master
+}
+# - - - Git deletion - - - #
+gitRm() {
+    ${GIT} rm "${dom}/${typ}/${obj}"
+}
+# - - - Git undo - - - #
+gitUndo() {
+    local todo = true
+}
+# - - - Git log - - - #
+gitLog() {
+    ${GIT} log --oneline ${dom}/${typ}/${obj}
+    git log --oneline --follow #show the commits that changed file, even across renames
+}
+# - - - Git Revert - - - #
+gitRevert() {
+    ${GIT} show ${treeish}:${dom}/${typ}/${obj} > ${dom}/${typ}/${obj}
+    gitSync
+}
+# - - - Git Chrono Vision - - - #
+gitChronoVision() {
+    ${GIT} show ${treeish}:${dom}/${typ}/${obj} > ${dom}/${typ}/${obj}
+    run_cmd
+    ${GIT} checkout -- ${dom}/${typ}/${obj}
+}
+# - - - Chrono Select - - - #
+chronoSelect() {
+    genChronoIndex
+    genList
+    read -p "$(echo -ne ${WHT}) Enter choice #$(echo -ne ${clr}) " choice
+    local line=$(echo ${chronoIndex} |sed 's/ /\n/g' |sed -n "${choice}p")
+    treeish="$(echo ${line} |cut -d '~' -f 1)"
+}
+# - - - Chrono Index - - - #
+genChronoIndex() {
+    chronoIndex="$(${GIT} log --oneline ${dom}/${typ}/${obj} |sed 's/ /~/g')"
 }
 # - - - tree command view - - - #
 treeUI() {
@@ -206,11 +385,6 @@ treeUI() {
     a+=" -P "
     ${TREE} ${a} "${s}" ${dom}
 }
-# - - - Gen index - - - #
-genIndex() {
-    index=$(find $(ls --color=never) -type f)
-    [[ ! -z ${dom} ]] && index=$(echo $index |sed 's/ /\n/g' |grep -E "${dom}//*")
-}
 # - - - Select from list - - - #
 selectList() {
     cd ${WAL} ;genIndex
@@ -219,13 +393,20 @@ selectList() {
     dom=$(echo ${index} |cut -d ' ' -f ${choice} |cut -d '/' -f 1)
     typ=$(echo ${index} |cut -d ' ' -f ${choice} |cut -d '/' -f 2)
     obj=$(echo -n ${index} |cut -d ' ' -f ${choice} |cut -d '/' -f 3)
-    wdir="${WAL}/${dom}/${typ}" ;main 
+    index=''
+}
+# - - - Gen index - - - #
+genIndex() {
+    index=$(find $(ls --color=never) -type f)
+    [[ ! -z ${dom} ]] && index=$(echo $index |sed 's/ /\n/g' |grep -E "${dom}//*")
 }
 # - - - Gen select list - - - #
 genList() {
     evalColors
-    cd ${WAL} ;local color_1=${BLU} ;local color_2=${wht} ;local ln=0
-    for line in $(echo $index) ;do
+    [[ ! -z ${index} ]] && local lines=$index
+    [[ ! -z ${chronoIndex} ]] && local lines=$chronoIndex
+    cd ${WAL} ;local color_1=${blu} ;local color_2=${wht} ;local ln=0
+    for line in $(echo $lines) ;do
         local ln=$(expr $ln + 1)
         # Set color
         if [[ -z ${t} ]] ;then
@@ -235,66 +416,21 @@ genList() {
             local t=''
             local color=${color_2}
         fi
-        # align columns
-        dom="$(echo ${line} |cut -d '/' -f 1)"
-        typ="$(echo ${line} |cut -d '/' -f 2)"
-        obj="$(echo ${line} |cut -d '/' -f 3)"
-        n=$(expr 26 - $(echo -n ${dom} |wc -c))
-        while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
-        n=$(expr 10 - $(echo -n ${typ} |wc -c))
-        while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
         echo -ne "${color}"
-        echo -ne "-> ${dom}"
-        echo -ne "- ${typ}"
-        echo -ne "${ln} - ${obj}"
+        if [[ ! -z ${index} ]] ;then
+            dom="$(echo ${line} |cut -d '/' -f 1)"
+            typ="$(echo ${line} |cut -d '/' -f 2)"
+            obj="$(echo ${line} |cut -d '/' -f 3)"
+            n=$(expr 26 - $(echo -n ${dom} |wc -c))
+            while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
+            n=$(expr 10 - $(echo -n ${typ} |wc -c))
+            while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
+            echo -ne "-> ${dom}- ${typ}${ln} - ${obj}"
+        elif [[ ! -z ${chronoIndex} ]] ;then
+            echo -ne "${ln} -> ${line}" |sed -e 's/~/ /g'
+        fi
         echo -e "${clr}"
     done ;
-}
-# - - - Git Commit, push, pull, merge - - - #
-gitSync() {
-    gitPull
-    gitPush
-}
-# - - - Git commit - - - #
-gitCommit() {
-    gitAdd
-    ${GIT} commit -m "pgw ${dom}/${typ}/${obj}"
-    gitSync
-}
-# - - - Git deletion - - - #
-gitRm() {
-    ${GIT} rm "${dom}/${typ}/${obj}"
-    gitCommit
-}
-# - - - Git undo - - - #
-gitUndo() {
-    local todo = true
-}
-# - - - Git add - - - #
-gitAdd() {
-    case "${1}" in
-        addFile)
-            local todo=true
-        ;;
-        addFolder)
-            local todo=true
-        ;;
-        *)
-            # Add just processed object
-            ${GIT} add ${dom}/${typ}/${obj}
-    esac
-}
-# - - - Git pull - - - #
-gitPull() {
-    ${GIT} pull origin master
-}
-# - - - Git push - - - #
-gitPush() {
-    ${GIT} push origin master
-}
-# - - - Git init - - - #
-gitInit() {
-    local todo = true
 }
 # - - - Color me encrypted - - - #
 evalColors() {
@@ -337,6 +473,6 @@ evalColors() {
 }
 #
 # - - - RUN - - - #
-parse_args ${@} ZZZ #The ZZZ is flag+value for-loop padding
-exit 1
+main ${@}
+exit ${?}
 # vim: set ts=4 sw=4 tw=80 et :
