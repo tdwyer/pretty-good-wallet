@@ -41,9 +41,12 @@ set_wallet ${0}
 [[ -z ${GNUPGHOME} ]] && GNUPGHOME="${HOME}/.gnupg"
 WAL="${GNUPGHOME}/${WALLET}"
 KEYID="$(cat "${WAL}/.KEYID")"
+PINENTRY=$(which pish) # git clone http://github.com/tdwyer/pish
 GPG=$(which gpg) ;[[ ${?} -gt 0 ]] && (echo "Install gpg (GnuPG) >=2.0")
-GPGen="${GPG} -a -s --cipher-algo TWOFISH --digest-algo SHA512"
+GPGen="${GPG} -a --yes -s --cipher-algo TWOFISH --digest-algo SHA512"
 GPGde="${GPG} -a --batch --quiet"
+GPGhash="${GPG} -a --print-md SHA512"
+SALT=$(${GPG} -a --gen-random 1 24)
 [[ -z ${PAGER} ]] && PAGER=$(which less)
 [[ ${PAGER} == "less" ]] && LESS="--RAW-CONTROL-CHARS"
 XCLIP=$(which xclip)
@@ -104,12 +107,12 @@ run_cmd() {
             cd ${wdir}
             case "${typ}" in
                 vault)
-                    ${GPGen} --yes -r "${KEYID}" -o ${wdir}/${obj} -e ${val}
+                    ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e ${val}
+                    [[ -d ${WAL}/.git ]] && gitSync
                 ;;
                 keyring)
-                    echo -n "${val}" | ${GPGen} --yes -r "${KEYID}" -o ${wdir}/${obj} -e
+                    pinentryKeyValue
             esac
-            [[ -d ${WAL}/.git ]] && gitSync
         ;;
         decrypt)
             case "${dst}" in
@@ -144,6 +147,54 @@ run_cmd() {
                 gitRevert
             fi
     esac
+}
+# - - - Encrypt key vlaue - - - #
+pinentryKeyValue() {
+    cd ${wdir}
+    local bN="About"
+    local bY="Enter"
+    local pT="Value:"
+    local dT="Enter value for key ${obj}@${dom}"
+    local vT="Re-enter value for key ${obj}@${dom}"
+    if [[ -z ${val} ]] ;then
+        case "${obj}" in
+            url|user:*)
+                local vT=
+                ${PINENTRY}  -N "${bn}" -Y "${bY}" -p "${pT}" -t "${dT}" | \
+                    ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
+                local vB="Enter? <${obj}@${dom}> = $(gpg --batch -d ${wdir}/${obj})"
+                ${PINENTRY} -N "${bn}" -Y "${bY}" -p "${pT}" -t "${vB}" -b
+                if [[ ! ${?} -eq 0 ]] ;then
+                    echo "Aborting . . ."
+                    gitClean
+                else
+                    [[ -d ${WAL}/.git ]] && gitSync
+                fi
+            ;;
+                *)
+                ${PINENTRY} -N "${bn}" -Y "${bY}" -p "${pT}" -t "${dT}" | \
+                    ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
+                if [[ ${?} -eq 0 ]] ;then
+                    if [[ \
+                    $(echo -n "${SALT}$(${PINENTRY} -N "${bn}" -Y "${bY}" -p "${pT}" -t "${vT}")" | ${GPGhash}) \
+                    != \
+                    $(echo -n "${SALT}$(${GPGde} -d ${wdir}/${obj})" | ${GPGhash}) \
+                    ]]
+                    then
+                        echo "Passwords did not match"
+                        gitClean
+                    else
+                        [[ -d ${WAL}/.git ]] && gitSync
+                    fi
+                else
+                    echo "Aborting . . ."
+                    gitClean
+                fi
+        esac
+    else
+        echo -n "${val}" | ${GPGen} -r "${KEYID}" -o ${wdir}/${obj} -e
+        val=""
+    fi
 }
 # - - - Parse the arguments - - - #
 parse_args() {
@@ -236,19 +287,10 @@ validate() {
             fi
             case ${typ} in
                 keyring)
-                    if [[ -z ${val} ]] ;then
-                        case "${obj}" in
-                            url|user:*)
-                                ask_prompt
-                            ;;
-                            *)
-                                ask_silent
-                        esac
-                    fi
-                    [[ -z ${val} ]] && exit 202
+                    local ok=true #handled in pinentryKeyValue
                 ;;
                 vault)
-                    if [[ -z ${val} ]] ;then echo ${HELP} ;exit 203 ;fi
+                    if [[ -f ${val} ]] ;then echo ${HELP} ;exit 203 ;fi
             esac
         ;;       
         decrypt)
@@ -290,15 +332,6 @@ validate() {
             echo "${HELP}" ; exit 250
     esac
 }
-# - - - Ask no echo - - - #
-ask_silent() {
-    read -sp "Enter value for ${obj}: " val
-    echo; read -sp "Re-enter value for ${obj}: " v
-    if [[ ${val} != ${v} || -z ${val} ]] ;then
-        echo 'Values did not match!'
-        val=""
-    fi
-}
 # - - - Ask echo - - - #
 ask_prompt() {
     read -p "Enter ${obj} value: " val
@@ -335,7 +368,11 @@ gitAdd() {
 }
 # - - - Git commit - - - #
 gitCommit() {
-    local msg="${dom}/${typ}/${obj} ${treeish} [${cmd}] $(date '+%F %T') ${USER}@${HOSTNAME}"
+    local msg="[${cmd}]"
+    [[ ! -z ${treeish} ]] && local msg+="<${treeish}>"
+    local msg+=" ${dom}/${typ}/${obj}"
+    local msg+=" $(date '+%F %T')"
+    local msg+=" ${USER}@${HOSTNAME}"
     ${GIT} commit -m "pgw ${msg}"
 }
 # - - - Git push - - - #
@@ -346,9 +383,9 @@ gitPush() {
 gitRm() {
     ${GIT} rm "${dom}/${typ}/${obj}"
 }
-# - - - Git undo - - - #
-gitUndo() {
-    local todo = true
+# - - - Git clean working directory - - - #
+gitClean() {
+    ${GIT} checkout -- ${dom}/${typ}/${obj}
 }
 # - - - Git log - - - #
 gitLog() {
@@ -364,12 +401,17 @@ gitRevert() {
 gitChronoVision() {
     ${GIT} show ${treeish}:${dom}/${typ}/${obj} > ${dom}/${typ}/${obj}
     run_cmd
-    ${GIT} checkout -- ${dom}/${typ}/${obj}
+    gitClean
 }
 # - - - Chrono Select - - - #
 chronoSelect() {
-    genChronoIndex
+    echo
+    echo " ::Select Version #"
+    echo
+    while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;local dash+="<-- " ;done
+    cd ${WAL} ;genChronoIndex
     genList
+    echo
     read -p "$(echo -ne ${WHT}) Enter choice #$(echo -ne ${clr}) " choice
     local line=$(echo ${chronoIndex} |sed 's/ /\n/g' |sed -n "${choice}p")
     treeish="$(echo ${line} |cut -d '~' -f 1)"
@@ -389,8 +431,12 @@ treeUI() {
 }
 # - - - Select from list - - - #
 selectList() {
+    echo
+    echo " ::Select Item #"
+    echo
     cd ${WAL} ;genIndex
     genList
+    echo
     read -p "$(echo -ne ${WHT}) Enter choice #$(echo -ne ${clr}) " choice 
     dom=$(echo ${index} |cut -d ' ' -f ${choice} |cut -d '/' -f 1)
     typ=$(echo ${index} |cut -d ' ' -f ${choice} |cut -d '/' -f 2)
@@ -429,7 +475,7 @@ genList() {
             while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
             echo -ne "-> ${dom}- ${typ}${ln} - ${obj}"
         elif [[ ! -z ${chronoIndex} ]] ;then
-            echo -ne "${ln} -> ${line}" |sed -e 's/~/ /g'
+            echo -ne "-> ${ln} - ${line}" |sed -e 's/~/ /g'
         fi
         echo -e "${clr}"
     done ;
@@ -476,5 +522,5 @@ evalColors() {
 #
 # - - - RUN - - - #
 main ${@}
-exit ${?}
+exit 0
 # vim: set ts=4 sw=4 tw=80 et :

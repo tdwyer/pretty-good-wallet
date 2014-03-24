@@ -57,49 +57,6 @@ Inside a *Keyring* directory is where you will find all of the **Keys** saved fo
     * NOTE: `export-to-keepass` is not integrated just yet :p, but it is just around the corner
 
 
-Confidentiality, Integrity, and Availability (CIA)
---------------------------------------------------
-
-
-If a functionality is not found here, it may very well be available. The beauty of using all standard tool in standard ways is that they work with all the other standard tools. So, if you want to store your GPG key on a *Trusted Platform Module (TPM)* or *SmartCard*, you can do it.
-
-
-**Confidentiality**
-  - **Transmission**
-    - OpenSSH provides encrypted access to Git server
-  - **Storage**
-    - GnuPG can encrypt data with strong ciphers
-      - Supported Symmetrical Ciphers Include: TWOFISH, CAMELLIA256, BLOWFISH, AES256
-  - **Processing**
-    - GnuPG is given the path and name of file to encrypt not the contents
-    - GnuPG is piped passwords to be encrypted.
-      - Work is ongoing to use `pinentry` instead
-
-**Integrity**
-  - **Transmission**
-    - Git validates the integrity of all data stored in the wallet with SHA1
-      - Enabling GPG Key Signing of Commits is planed
-    - OpenSSH uses TCP to insure all packets are received
-  - **Storage**
-    - GnuPG validates data with *digital signatures*
-      - Supported Public Key algorithms Include: RSA, ELG, DSA, ECC
-  - **Processing**
-    - GnuPG output is piped directly to it's destination
-      - Handling of plaintext by PGW is avoided whenever possible
-
-**Availability**
-  - **Transmission**
-    - Git Server can be Accessed from HTTP, HTTPS, or OpenSSH
-  - **Storage**
-    - GnuPG can encrypt to *multiple keys* in case the main key is lost
-    - Git Maintains a Local Repository of the Complete Wallet and all Changes
-  - **Processing**
-    - GnuPG *multi-account access* by encrypting to all team members keys
-    - Git manages changes submitted by multiple sources
-    - Git provides change rollback functionality for *password recovery*
-    - GPG-Agent provides *session management*
-
-
 Interoperability with Other Managers and Programs
 -------------------------------------------------
 
@@ -200,3 +157,46 @@ PGW also provide a couple options to improve locating items and accessing them.
 **Adding a file to the vault**
   - PGW makes it easy to store related documents 
     - `pgw -d exampleTaxService.com -v EZ1040-2013.pdf -e`
+
+
+Confidentiality, Integrity, and Availability (CIA)
+--------------------------------------------------
+
+
+If a functionality is not found here, it may very well be available. The beauty of using all standard tool in standard ways is that they work with all the other standard tools. So, if you want to store your GPG key on a *Trusted Platform Module (TPM)* or *SmartCard*, you can do it.
+
+
+**Confidentiality**
+  - **Transmission**
+    - OpenSSH provides encrypted access to Git server
+  - **Storage**
+    - GnuPG can encrypt data with strong ciphers
+      - Supported Symmetrical Ciphers Include: TWOFISH, CAMELLIA256, BLOWFISH, AES256
+  - **Processing**
+    - GnuPG is given the path and name of file to encrypt not the contents
+    - Pinentry stdout is piped directly to GnuPG stdin
+
+**Integrity**
+  - **Transmission**
+    - Git validates the integrity of all data stored in the wallet with SHA1
+      - Enabling GPG Key Signing of Commits is planed
+    - OpenSSH uses TCP to insure all packets are received
+  - **Storage**
+    - GnuPG validates data with *digital signatures*
+      - Supported Public Key algorithms Include: RSA, ELG, DSA, ECC
+  - **Processing**
+    - GnuPG output is piped directly to it's destination
+      - Handling of plaintext by PGW is avoided whenever possible
+
+**Availability**
+  - **Transmission**
+    - Git Server can be Accessed from HTTP, HTTPS, or OpenSSH
+  - **Storage**
+    - GnuPG can encrypt to *multiple keys* in case the main key is lost
+    - Git Maintains a Local Repository of the Complete Wallet and all Changes
+  - **Processing**
+    - GnuPG *multi-account access* by encrypting to all team members keys
+    - Git manages changes submitted by multiple sources
+    - Git provides change rollback functionality for *password recovery*
+    - GPG-Agent provides *session management*
+
