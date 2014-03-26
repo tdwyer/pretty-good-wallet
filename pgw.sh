@@ -1,63 +1,83 @@
 #!/bin/bash
 #
-#   GpgWallet       GPLv3              v10.8.1
+#   GpgWallet       GPLv3              v10.9
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 #
-set_wallet() {
-    #
-    # Use multiple wallets by creating a symbolic link like so
-    # ln -s /usr/bin/pgw pgw:work # Active Wallet would be $GNUPGHOME/work
-    # ln -s /usr/bin/pgw pgw:private # Active Wallet would be $GNUPGHOME/private
-    # Default: $GNUPGHOME/wallet
-    #
-    local c="$(echo "${1}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 1)"
-    local w="$(echo "${1}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 2)"
-    if [[ "${c}" == "${w}" ]] ;then WALLET="wallet" ;else WALLET="${w}" ;fi
-} set_wallet ${0}
+SELF="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 1)"
+WAL="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 2)"
+if [[ "${SELF}" == "${WAL}" ]] ;then WALLET="wallet" ;else WALLET="${WAL}" ;fi
+SELF="${SELF}"
 [[ ! -d ${GNUPGHOME} ]] && GNUPGHOME="${HOME}/.gnupg"
 WAL="${GNUPGHOME}/${WALLET}"
-#
-CONFIG="${WAL}/.config"
-. $CONFIG 2>/dev/null
+CONFIG="${WAL}/.pgw.conf"
+# - - - Setup/Read Configuration - - - #
+read_config() {
+    if [[ ! -d ${WAL} ]] ;then
+        mkdir -p "${WAL}" ;chmod 0700 "${WAL}"
+        cp /usr/share/pgw/pgw.conf "${WAL}/.pgw.conf"
+        echo '.pgw.conf' >> "${WAL}/.gitignore"
+        gitInit
+    elif [[ ! -f ${CONFIG} ]] ;then
+        #
+        cp /usr/share/pgw/pgw.conf "${WAL}/.pgw.conf"
+    elif [[ ! -f "${WAL}/.gitignore" ]] ;then
+        #
+        echo '.pgw.conf' >> "${WAL}/.gitignore"
+    elif [[ ! -d "${WAL}/.git" ]] ;then
+        #
+        gitInit
+    fi
+    #
+    . $CONFIG 2>/dev/null # Source Wallet Configuration File
+}
 #
 HELP="
-Usage ${0} [-l (search-term)] [-e] [-d] [-clip] [-screen] [-window #]
-                [-s example.com] [-k username (-p password)] [-v filename]
+Usage ${SELF} [-e] [-d domain] [-k user (-v pass)] [-f filename] [-accnt name]
+          [-stdout] [-auto] [-clip] [-screen] [-window #]
+          [-t (search-string)] [-update] [-chrono (commit)] [-revert (commit)]
+-e              :Encrypt
 -d  domainname  :Domain, Each domain contains a Keyring and a Vault
 -k  keyname     :Keyring, Think User/Password. Value i.e. passwd is prompted for
     -v          :Key Value, Provide value in command instead of through a prompt
 -f  filename    :Vault, Encrypted file management with native interface
--e              :Encrypt
+-accnt  name    :Account pair (user:name pass:name)
 -stdout         :Send to plaintext to stdout
--clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary: DEFAULT  1
+-auto           :Auto-Type into user selected window. Best used with -accnt
+-clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary. DEFAULT: 1
 -screen         :Send to gnu-screen copy buffer 
 -window #       :Send to stdin of gnu-screen window Number
 -t  str         :Search wallet with: -d, -k, -v and/or string found in name
 -update         :Pull latest wallet from git server
--accnt  name    :Account pair (user:name pass:name)
--chrono commit  :View a past verion of an object, list select or commit
--revert commit  :Revert an object to an earlier state, list select or commit
+-chrono commit  :View older verion. DEFAULT: Select from list
+-revert commit  :Revert to older version. DEFAULT: Select from list
 "
-#
-[[ -z ${KEYID} ]] && KEYID="$(cat "${WAL}/.KEYID")"
+[[ -z ${NO_COLOR} ]] && NO_COLOR=0
+[[ -z ${KEYID} ]] && KEYID=""
 [[ -z ${CIPHER} ]] && CIPHER="TWOFISH"
 [[ -z ${DIGEST} ]] && DIGEST="SHA512"
 [[ -z ${PAGER} ]] && \
-PAGER=$(which less 2>/dev/null) ;[[ ! -x ${PAGER} ]] && PAGER=""
-XDO=$(which xdotool 2>/dev/null) ;[[ ! -x ${XDO} ]] && XDO=""
-XCLIP_EXE=$(which xclip 2>/dev/null) ;[[ ! -x ${XCLIP_EXE} ]] && XCLIP_EXE=""
-SCREEN=$(which screen 2>/dev/null) ;[[ ! -x ${SCREEN} ]] && SCREEN=""
-TREE=$(which tree 2>/dev/null) ;[[ ! -x ${TREE} ]] && TREE=""
-XCRYPTB=$(which cryptboard 2>/dev/null) ;[[ ! -x ${XCRYPTB} ]] && XCRYPTB=""
-PINENTRY_X=$(which pish 2>/dev/null) ;[[ ! -x ${PINENTRY_X} ]] && PINENTRY_X=""
-GIT_EXE=$(which git 2>/dev/null) ;[[ ! -x ${GIT_EXE} ]] && GIT_EXE=""
-GPG=$(which gpg 2>/dev/null) ;[[ ! -x ${GPG} ]] && GPG=""
-#
+PAGER=$(whereis -b less |cut -d ' ' -f 2)
+GIT_EXE=$(whereis -b git |cut -d ' ' -f 2)
+XCLIP_EXE=$(whereis -b xclip |cut -d ' ' -f 2)
+XDO=$(whereis -b xdotool |cut -d ' ' -f 2)
+SCREEN=$(whereis -b screen |cut -d ' ' -f 2)
+TREE=$(whereis -b tree |cut -d ' ' -f 2)
+XCRYPTB=$(whereis -b cryptboard |cut -d ' ' -f 2)
+PINENTRY=$(whereis -b pish |cut -d ' ' -f 2)
+GPG=$(whereis -b gpg |cut -d ' ' -f 2)
+[[ ! -x ${PAGER} ]] && PAGER=""
+[[ ! -x ${GIT_EXE} ]] && GIT_EXE=""
+[[ ! -x ${XCLIP_EXE} ]] && XCLIP_EXE=""
+[[ ! -x ${XDO} ]] && XDO=""
+[[ ! -x ${SCREEN} ]] && SCREEN=""
+[[ ! -x ${TREE} ]] && TREE=""
+[[ ! -x ${XCRYPTB} ]] && XCRYPTB=""
+[[ ! -x ${PINENTRY} ]] && PINENTRY=""
+[[ ! -x ${GPG} ]] && GPG=""
 [[ ${PAGER} == "less" ]] && LESS="--RAW-CONTROL-CHARS"
 GIT="${GIT_EXE} -C ${WAL}"
 XCLIP="${XCLIP_EXE} -selection"
-XCS=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
-#
+XCD=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
 SALT=$(${GPG} --armor --quiet --batch --yes --gen-random 1 24)
 GPGhash="${GPG} --armor --quiet --batch --yes --print-md ${DIGEST}"
 GPGde="${GPG} --armor --quiet --batch --yes"
@@ -67,13 +87,14 @@ GPGen+=" --digest-algo ${DIGEST}"
 if [[ -z ${KEYID} ]]
     then GPGen+=" --default-recipient-self"
 else
-    for uid in $(echo -n ${KEYID} |sed 's/ /\n/g') ;do
-        GPGen+=" --recipient ${uid}"
+    for key in ${KEYID} ;do
+        GPGen+=" -r ${key}"
     done
 fi
 #
 # - - - Main - - - #
 main() {
+    read_config
     parse_args ${@} ZZZ #pad for-args with ZZZ
     case "${meta}" in
         accnt)
@@ -83,7 +104,6 @@ main() {
                 else local items="user pass"
             fi
             for item in ${items} ;do
-                echo
                 typ='keyring'
                 obj="${item}:${accnt_name}"
                 validate
@@ -112,11 +132,11 @@ parse_args() {
             -h|--help)
                 cmd="help"
             ;;
+            -e)
+                cmd='encrypt'
+            ;;
             -d)
                 dom="${arg}"
-            ;;
-            -accnt)
-                meta="accnt" ; obj="${arg}"
             ;;
             -k)
                 typ='keyring' ; obj="${arg}"
@@ -129,11 +149,14 @@ parse_args() {
                 obj="$(echo ${arg} |sed 's/\//\n/g' |tail -n1)"
                 [[ $(echo $obj |rev |cut -d '.' -f 1) != 'asc' ]] && obj+=".asc"
             ;;
-            -e)
-                cmd='encrypt'
+            -accnt)
+                meta="accnt" ; obj="${arg}"
             ;;
             -stdout)
                 cmd='decrypt' ; dst='stdout' ; sel="${arg}"
+            ;;
+            -auto)
+                cmd='decrypt' ; dst='auto'
             ;;
             -clip)
                 cmd='decrypt' ; dst='clip' ; sel="${arg}"
@@ -161,19 +184,19 @@ parse_args() {
 # - - - Check for errors - - - #
 validate() {
     local uniques="-h --help -e -stdout -clip -screen -window -t -update"
-    local opts=" ZZZ -chrono -revert -d -k -v -f ${uniques}"
-    local uniqueN=0 ;local otypeN=0 # I know there is a joke here somewhere...One ring?
+    local opts=" ZZZ -auto -chrono -revert -d -k -v -f ${uniques}"
+    local uniqueN=0 ;local obj_typeN=0
     for item in ${@} ;do
         for unique in uniques ;do
             [[ "${unique}" == "${item}" ]] && uniqueN=$(expr ${x} + 1)
         done
-        for otype in "-k -f" ;do
-            [[ "${otype}" == "${item}" ]] && otypeN=$(expr ${y} + 1)
+        for obj_type in "-k -f" ;do
+            [[ "${otype}" == "${item}" ]] && obj_typeN=$(expr ${y} + 1)
         done
         if [[ ${uniqueN} -gt 1 ]] ;then
             echo "Can only give one command which encrypts or decrypts"
             exit 200
-        elif [[ ${otypeN} -gt 1 ]] ;then
+        elif [[ ${obj_typeN} -gt 1 ]] ;then
             echo "Can not give -f and -k at the same time"
             exit 200
         fi
@@ -191,40 +214,18 @@ validate() {
             local ok=true #takes no args
         ;;
         encrypt)
-            local gpghead="-----BEGIN PGP MESSAGE-----"
-            ISGPG=0
-            if [[ -z ${dom} || -z ${typ} || -z ${obj} ]] ;then
-                echo "${HELP}"
-                exit 2
-            elif [[ ! -z ${val} ]] ;then
-                if [[ -f ${val} ]] ;then
-                    if [[ "$(head -n 1 ${val})" == ${gpghead} ]]
-                        then ISGPG=1
-                    fi
-                else
-                    if [[ "$(echo "${val}" |head -n 1)" == "${gpghead}" ]]
-                        then ISGPG=2
-                    fi
-                fi
-            elif [[ -z ${val} ]] ;then
-                if [[ "$(${XCLIP} ${XCS[3]} -o |head -n 1)" == ${gpghead} ]]
-                    then ISGPG=3
-                fi
-            fi
             case ${typ} in
                 keyring)
-                    case ${pin_check} in
+                    case ${check} in
                         1)
-                            echo "Key values did not match"
-                            exit 221 
+                            exit 221 # User Aborted
                         ;;
                         2)
-                            echo "User Aborted . . ."
-                            exit 222
+                            exit 222 # Passwords did not match
                     esac
                 ;;
                 vault)
-                    if [[ -z ${val} && ! ${ISGPG} -eq 3 ]] ;then
+                    if [[ -z ${val} ]] ;then
                         echo "${HELP}"
                         exit 223
                     fi
@@ -232,16 +233,13 @@ validate() {
         ;;       
         decrypt)
             [[ -z ${dom} || -z ${typ} || -z ${obj} ]] && selectList
-            if [[ ! "stdout clip screen window" =~ ${dst} ]] ;then
+            if [[ ! "stdout auto clip screen window" =~ ${dst} ]] ;then
                 echo "${HELP}"
                 exit 231
             fi
             case ${dst} in
-                stdout)
-                    local ok=true #checking error in: for o in ${opts}
-                ;;
                 clip)
-                    [[ -z ${XCS[${sel}]} ]] && sel=1
+                    [[ -z ${XCD[${sel}]} ]] && sel=1
                 ;;
                 window)
                     $(expr ${sel} + 1 1>/dev/null 2>&1)
@@ -287,42 +285,29 @@ run_cmd() {
             fi
         ;;
         encrypt)
-            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir}
-            cd ${wdir}
+            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir} ;cd ${wdir}
+            check=0
             case "${typ}" in
                 vault)
-                    case "${ISGPG}" in
-                        0)
-                            if [[ -f ${val} ]] ;then
-                                ${GPGen} -o ${wdir}/${obj} -e ${val}
-                            else
-                                echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
-                            fi
-                        ;;
-                        1)
-                            cat ${val} > ${wdir}/${obj}
-                        ;;
-                        2)
-                            echo -n "${val}" > ${wdir}/${obj}
-                        ;;
-                        3)
-                            ${XCLIP} ${XCS[3]} -o > ${wdir}/${obj}
-                    esac
-                    [[ -d ${WAL}/.git ]] && gitSync
+                    ${GPGen} -o ${wdir}/${obj} -e ${val}
                 ;;
                 keyring)
-                    if [[ ${ISGPG} -gt 0 ]] ;then
-                        ${XCLIP} ${XCS[3]} -o > ${wdir}/${obj}
-                    elif [[ ! -z ${val} ]] ;then
-                        echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
-                    else
+                    if [[ -z ${val} ]] ;then
                         local obj_typ=$(echo ${obj} |cut -d ':' -f 1)
                         if [[ "${obj_typ}" == "user" || "${obj_typ}" == "url" ]]
-                            then ask_prompt
-                            else pinentryKeyValue
+                            then prompt
+                            echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
+                        else
+                            pinentryKeyValue
                         fi
+                    else
+                        echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
                     fi
             esac
+            if [[ ${check} -eq 0 ]]
+                then gitSync
+                else gitClean
+            fi
             val=""
         ;;
         decrypt)
@@ -338,22 +323,22 @@ run_cmd() {
                     if [[ -z ${xwindow} ]] ;then
                         xwindow="$(${XDO} selectwindow 2>&1 |tail -n 1)"
                         ${XDO} windowraise ${xwindow}
-                        ${XDO} windowfocus --sync ${windowfocus}
+                        ${XDO} windowfocus --sync ${xwindow}
                     fi
                     ${XDO} type "$(${GPGde} -d ${wdir}/${obj})"
                     #
                     local accnt_type="$(echo -n ${obj} |cut -d ':' -f 1)"
                     if [[ ${accnt_type} == "user" && "${meta}" == "accnt" ]]
                         then ${XDO} key --window ${xwindow} Tab
-                    elif [[ ${accnt_type} == "pass" ]]
-                        then ${XDO} key --window ${xwindow} Enter
+                    elif [[ ${accnt_type} == "pass" || ${accnt_type} == "url" ]]
+                        then ${XDO} key --window ${xwindow} Return
                     fi
                 ;;
                 clip)
                     if [[ -z ${XCRYPTB} ]] ;then
-                        ${GPGde} -d ${wdir}/${obj} | ${XCLIP} ${XCS[${sel}]} -in
+                        ${GPGde} -d ${wdir}/${obj} | ${XCLIP} ${XCD[${sel}]} -in
                     else
-                        cat ${wdir}/${obj} | ${XCLIP} ${XCS[3]} -i
+                        cat ${wdir}/${obj} | ${XCLIP} ${XCD[3]} -i
                     fi
                 ;;
                 screen)
@@ -379,7 +364,6 @@ run_cmd() {
 }
 # - - - Encrypt key vlaue - - - #
 pinentryKeyValue() {
-    pin_check=0
     cd ${wdir}
     local N_txt="About"
     local Y_txt="Enter"
@@ -395,40 +379,28 @@ pinentryKeyValue() {
         $(echo -n "${SALT}$(${GPGde} -d ${wdir}/${obj})" | ${GPGhash}) \
         ]]
         then
-            pin_check=1 # Passwords did not match
-            gitClean
-        else
-            [[ -d ${WAL}/.git ]] && gitSync
+            echo "Key values did not match"
+            check=2
         fi
     else
-        pin_check=2 # User Abort
-        gitClean
+        echo "User Aborted . . ."
+        check=1
     fi
 }
-# - - - Ask echo - - - #
-ask_prompt() {
+# - - - Prompt for value - - - #
+prompt() {
     read -p "Enter ${obj} value: " val
     echo; read -p "Set ${obj} value (y/n): " v
     if [[ ${v,,} != "y" ]] ;then
         echo "User Aborted . . ."
+        check=1
     fi
-}
-# - - - Sync repos - - - #
-gitSync() {
-    gitAdd
-    gitPull
-    gitCommit
-    gitPush
-}
-# - - - Delete Object - - - #
-gitRemove() {
-    local todo = true
-    #gitRm
-    #gitSync
 }
 # - - - Git init - - - #
 gitInit() {
-    local todo = true
+    cd ${WAL}
+    ${GIT} init
+    gitSync
 }
 # - - - Git pull - - - #
 gitPull() {
@@ -451,7 +423,7 @@ gitCommit() {
 gitPush() {
     ${GIT} push origin master
 }
-# - - - Git deletion - - - #
+# - - - Git remove - - - #
 gitRm() {
     ${GIT} rm "${dom}/${typ}/${obj}"
 }
@@ -459,10 +431,13 @@ gitRm() {
 gitClean() {
     ${GIT} checkout -- ${dom}/${typ}/${obj}
 }
-# - - - Git log - - - #
-gitLog() {
-    ${GIT} log --oneline ${dom}/${typ}/${obj}
-    git log --oneline --follow #show the commits that changed file, even across renames
+# - - - Sync repos - - - #
+gitSync() {
+    local remotes=$(${GIT} remote -v)
+    gitAdd
+    [[ ! -z ${remotes} ]] && gitPull
+    gitCommit
+    [[ ! -z ${remotes} ]] && gitPush
 }
 # - - - Git Revert - - - #
 gitRevert() {
@@ -518,14 +493,22 @@ selectList() {
 # - - - Gen index - - - #
 genIndex() {
     index=$(find $(ls --color=never) -type f)
-    [[ ! -z ${dom} ]] && index=$(echo $index |sed 's/ /\n/g' |grep -E "${dom}//*")
+    if [[ ! -z ${dom} ]] ;then
+        index=$(echo $index |sed 's/ /\n/g' |grep -E "${dom}//*")
+    fi
 }
 # - - - Gen select list - - - #
 genList() {
-    evalColors
     [[ ! -z ${index} ]] && local lines=$index
     [[ ! -z ${chronoIndex} ]] && local lines=$chronoIndex
-    cd ${WAL} ;local color_1=${blu} ;local color_2=${wht} ;local ln=0
+    cd ${WAL}
+    local ln=0
+    if [[  ${NO_COLOR} -eq 0 ]] ;then
+        evalColors
+        local color_1=${blu} ;local color_2=${wht}
+    else
+        local color_1="" ;local color_2=""
+    fi
     for line in $(echo $lines) ;do
         local ln=$(expr $ln + 1)
         # Set color
@@ -555,7 +538,7 @@ genList() {
 # - - - Color me encrypted - - - #
 evalColors() {
     BlK=$(tput blink;tput bold;tput setaf 0)
-    RrD=$(tput blink;tput bold;tput setaf 1)
+    ReD=$(tput blink;tput bold;tput setaf 1)
     GrN=$(tput blink;tput bold;tput setaf 2)
     YeL=$(tput blink;tput bold;tput setaf 3)
     BlU=$(tput blink;tput bold;tput setaf 4)

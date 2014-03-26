@@ -120,7 +120,25 @@ User Interface
 The user interface is command line based. With it you can encrypt keys and files. Then you can access them in a few ways, such as send to the GNU Screen copy buffer `-screen`, GNU Screen window `-window #`, cursor position `-stdout`, or wire to a file `-stdout file.txt`. The X11 *Clipboard* is also destination and it selected with `-clip 1`, `2`, or `3` where `1` is Primary selection, `2` Secondary, and `3` is the Clipboard.
 
 
-PGW also provide a couple options to improve locating items and accessing them.
+### NEW Features
+
+
+* **Auto-Type** with `-auto`
+* **Add Account** in one go with `-accnt`
+  * This option is ideal with `-auto` to log into websites
+* **View Old Revisions** `-chrono`
+* **Recover Old Revisions** `-revert`
+* **Cryptboard Support** if [Cryptboard](http://github.com/tdwyer/cryptboard "Cryptboard") is installed `-clip` will put *encrypted* messages in the clipboard
+* **Auto-Gen Wallet** the *Wallet* will be created
+  * `git init` will run
+  * `pgw.conf` will be created
+* **Multi-Wallet Support** Simply by creating symbolic links
+  * Have a *Work Wallet* `ln -s /usr/bin/pgw pgw:work`
+    * Now run `pgw:work` to create and use the wallet `$HOME/.gnupg/work`
+* **Per-Wallet Configuration** `wallet/.pgw.conf`
+
+
+PGW provides a couple options to improve locating items and accessing them.
 
 - **Search the Wallet in Tree View**
   - The `tree` command is used for Fancy and Readable View of the wallet
