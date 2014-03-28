@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#   GpgWallet       GPLv3              v10.9.1
+#   GpgWallet       GPLv3              v10.9.2
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 #
 SELF="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 1)"
@@ -49,6 +49,8 @@ Usage ${SELF} [-e] [-d domain] [-k user (-v pass)] [-f filename] [-accnt name]
 -update         :Pull latest wallet from git server
 -chrono commit  :View older verion. DEFAULT: Select from list
 -revert commit  :Revert to older version. DEFAULT: Select from list
+
+NOTE: If Cryptboard available, -clip will put encrypted message in X11 clipboard
 "
 [[ -z ${NO_COLOR} ]] && NO_COLOR=0
 [[ -z ${KEYID} ]] && KEYID=""
@@ -77,7 +79,6 @@ GPG=$(whereis -b gpg |cut -d ' ' -f 2)
 GIT="${GIT_EXE} -C ${WAL}"
 XCLIP="${XCLIP_EXE} -selection"
 XCD=( ["1"]="primary" ["2"]="secondary" ["3"]="clipboard" )
-# pinentryKeyValue() Password Verification GPGhash(SALT+(pinentry stdout))
 SALT=$(${GPG} --armor --quiet --batch --yes --gen-random 1 24)
 GPGhash="${GPG} --armor --quiet --batch --yes --print-md ${DIGEST}"
 GPGde="${GPG} --armor --quiet --batch --yes"
@@ -210,6 +211,7 @@ validate() {
             echo "${HELP}"
             exit 250
     esac
+    wdir="${WAL}/${dom}/${typ}" # Shorten this validated path
 }
 # - - - Verify Unique Command Options - - - #
 verifyUnique() {
@@ -308,81 +310,20 @@ verifyRevert() {
 }
 # - - - List, Encrypt, or Decrypt objects - - - #
 run_cmd() {
-    local wdir="${WAL}/${dom}/${typ}"
     case "${cmd}" in
         help)
             echo "${help}"
+        ;;
+        encrypt)
+            encryptValue
+        ;;
+        decrypt)
+            decryptValue
         ;;
         tree)
             local tree_lines=$(expr 4 + $(treeUI | wc -l))
             local term_lines=$(tput lines)
             treeUI ${tree_lines} ${term_lines}
-        ;;
-        encrypt)
-            [[ ! -d ${wdir}  ]] && mkdir -p ${wdir} ;cd ${wdir}
-            check=0
-            case "${typ}" in
-                vault)
-                    ${GPGen} -o ${wdir}/${obj} -e ${val}
-                ;;
-                keyring)
-                    if [[ -z ${val} ]] ;then
-                        local obj_typ=$(echo ${obj} |cut -d ':' -f 1)
-                        if [[ "${obj_typ}" == "user" || "${obj_typ}" == "url" ]]
-                            then prompt
-                            echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
-                        else
-                            pinentryKeyValue
-                        fi
-                    else
-                        echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
-                    fi
-            esac
-            if [[ ${check} -eq 0 ]]
-                then gitSync
-                else gitClean
-            fi
-            val=""
-        ;;
-        decrypt)
-            case "${dst}" in
-                stdout)
-                    if [[ -z ${sel} ]] ;then
-                        ${GPGde} -d ${wdir}/${obj}
-                    else
-                        ${GPGde} -o ${sel} -d ${wdir}/${obj}
-                    fi
-                ;;
-                auto)
-                    if [[ -z ${xwindow} ]] ;then
-                        xwindow="$(${XDO} selectwindow 2>&1 |tail -n 1)"
-                        ${XDO} windowraise ${xwindow}
-                        ${XDO} windowfocus --sync ${xwindow}
-                    fi
-                    ${XDO} type "$(${GPGde} -d ${wdir}/${obj})"
-                    #
-                    local accnt_type="$(echo -n ${obj} |cut -d ':' -f 1)"
-                    if [[ ${accnt_type} == "user" && "${meta}" == "accnt" ]]
-                        then ${XDO} key --window ${xwindow} Tab
-                    elif [[ ${accnt_type} == "pass" || ${accnt_type} == "url" ]]
-                        then ${XDO} key --window ${xwindow} Return
-                    fi
-                ;;
-                clip)
-                    if [[ -z ${XCRYPTB} ]] ;then
-                        ${GPGde} -d ${wdir}/${obj} | ${XCLIP} ${XCD[${sel}]} -in
-                    else
-                        cat ${wdir}/${obj} | ${XCLIP} ${XCD[3]} -i
-                    fi
-                ;;
-                screen)
-                    ${SCREEN}\
-                    -S $STY -X register . "$(${GPGde} -d ${wdir}/${obj})"
-                ;;
-                window)
-                    ${SCREEN}\
-                    -S $STY -p "${sel}" -X stuff "$(${GPGde} -d ${wdir}/${obj})"
-            esac
         ;;
         update)
             gitPull
@@ -394,6 +335,74 @@ run_cmd() {
             else
                 gitRevert
             fi
+    esac
+}
+# - - - Encrypt value - - - #
+encryptValue() {
+    [[ ! -d ${wdir}  ]] && mkdir -p ${wdir} ;cd ${wdir}
+    check=0
+    case "${typ}" in
+        vault)
+            ${GPGen} -o ${wdir}/${obj} -e ${val}
+        ;;
+        keyring)
+            if [[ -z ${val} ]] ;then
+                local obj_typ=$(echo ${obj} |cut -d ':' -f 1)
+                if [[ "${obj_typ}" == "user" || "${obj_typ}" == "url" ]]
+                    then prompt
+                    echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
+                else
+                    pinentryKeyValue
+                fi
+            else
+                echo -n "${val}" | ${GPGen} -o ${wdir}/${obj} -e
+            fi
+    esac
+    if [[ ${check} -eq 0 ]]
+        then gitSync
+        else gitClean
+    fi
+    val=""
+}
+# - - - Decyrpt value - - - #
+decryptValue() {
+    case "${dst}" in
+        stdout)
+            if [[ -z ${sel} ]] ;then
+                ${GPGde} -d ${wdir}/${obj}
+            else
+                ${GPGde} -o ${sel} -d ${wdir}/${obj}
+            fi
+        ;;
+        auto)
+            if [[ -z ${xwindow} ]] ;then
+                xwindow="$(${XDO} selectwindow 2>&1 |tail -n 1)"
+                ${XDO} windowraise ${xwindow}
+                ${XDO} windowfocus --sync ${xwindow}
+            fi
+            ${XDO} type "$(${GPGde} -d ${wdir}/${obj})"
+            #
+            local accnt_type="$(echo -n ${obj} |cut -d ':' -f 1)"
+            if [[ ${accnt_type} == "user" && "${meta}" == "accnt" ]]
+                then ${XDO} key --window ${xwindow} Tab
+            elif [[ ${accnt_type} == "pass" || ${accnt_type} == "url" ]]
+                then ${XDO} key --window ${xwindow} Return
+            fi
+        ;;
+        clip)
+            if [[ -z ${XCRYPTB} ]] ;then
+                ${GPGde} -d ${wdir}/${obj} | ${XCLIP} ${XCD[${sel}]} -in
+            else
+                cat ${wdir}/${obj} | ${XCLIP} ${XCD[3]} -i
+            fi
+        ;;
+        screen)
+            ${SCREEN}\
+            -S $STY -X register . "$(${GPGde} -d ${wdir}/${obj})"
+        ;;
+        window)
+            ${SCREEN}\
+            -S $STY -p "${sel}" -X stuff "$(${GPGde} -d ${wdir}/${obj})"
     esac
 }
 # - - - Encrypt key vlaue - - - #
@@ -463,7 +472,12 @@ gitRm() {
 }
 # - - - Git clean working directory - - - #
 gitClean() {
-    ${GIT} checkout -- ${dom}/${typ}/${obj}
+    if [[ -z $(git --no-pager show ${dom}/${typ}/${obj} 2>/dev/null) ]] ;then
+        cd ${WAL}
+        rm -d ${dom}/${typ}/${obj}
+    else
+        ${GIT} checkout -- ${dom}/${typ}/${obj}
+    fi
 }
 # - - - Sync repos - - - #
 gitSync() {
