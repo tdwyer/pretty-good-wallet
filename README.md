@@ -83,12 +83,6 @@ Interoperability with Other Managers and Programs
 ### Python Keyring Config
 
 
-#### Install the Python Keyring Backend
-
-
-    cp ./PGW/Python2.7/keyring/backends/pgw.py /usr/lib/python2.7/site-packages/keyring/backends
-
-
 #### Configure Python Keyring
 
 
@@ -98,7 +92,7 @@ Enable Python Keyring for your user by adding the following to
 
     [backend]
     default-keyring=pgw.Wallet
-    keyring-path=/usr/lib/python2.7/site-packages/keyring/backends
+    keyring-path=/usr/lib/python2.7/site-packages/PyPGW/keyring/backends
 
 
 ### OfflineIMAP Configuration for Python Keyring
