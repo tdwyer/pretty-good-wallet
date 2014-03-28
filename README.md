@@ -150,7 +150,7 @@ PGW provides a couple options to improve locating items and accessing them.
 ### Examples
 
 
-**Adding website account**
+**Working with the Keys**
   - Enter password with the interactive prompt
     - Enter `pgw -d example.com -accnt main -e`
         - Then enter your username and your password with `pinentry`
@@ -165,7 +165,7 @@ PGW provides a couple options to improve locating items and accessing them.
     - Then click back on the web browser
 
 
-**Adding a file to the vault**
+**Working with the Vault**
   - PGW makes it easy to store related documents 
     - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
 **Get a file from a vault**
