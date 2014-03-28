@@ -166,13 +166,19 @@ PGW provides a couple options to improve locating items and accessing them.
 
 
 **Working with the Vault**
-  - PGW makes it easy to store related documents 
+  - It's easy to *encrypt*, *sync*, *backup*, and *version control* related documents
     - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
-**Get a file from a vault**
+* **Geting a file from a vault**
   - Just redirect `-stdout` to a file name. Like all other Unix commands
     - `pgw -d tax.examplecom -stdout >taxes.pdf`
   - You could just select from the list and specify the full path to output file
     - `pgw -stdout ~/taxes.pdf`
+  - Just like with *Keys* you can view old versions of files
+    - Simply add `-chrono` to the same commands and select the version to view
+* **Recover** old version of a file
+    - Works the same as viewing old version except add `-revert` instead
+      - `pgw -stdout ~/taxes.pdf -revert` and select the version you want
+    - You can *always* recover from a recovery. *Git revert* is non-destructive
 
 
 Confidentiality, Integrity, and Availability (CIA)
