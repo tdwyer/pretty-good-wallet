@@ -83,11 +83,8 @@ Interoperability with Other Managers and Programs
 ### Python Keyring Config
 
 
-#### Configure Python Keyring
-
-
 Enable Python Keyring for your user by adding the following to
-**$HOME/.local/share/python_keyring/keyringrc.cfg**
+`$HOME/.local/share/python_keyring/keyringrc.cfg`
 
 
     [backend]
@@ -111,7 +108,7 @@ User Interface
 --------------
 
 
-The user interface is command line based. With it you can encrypt keys and files. Then you can access them in a few ways, such as send to the GNU Screen copy buffer `-screen`, GNU Screen window `-window #`, cursor position `-stdout`, or wire to a file `-stdout file.txt`. The X11 *Clipboard* is also destination and it selected with `-clip 1`, `2`, or `3` where `1` is Primary selection, `2` Secondary, and `3` is the Clipboard.
+The user interface is command line based. With it you can encrypt keys and files. Then you can access them in a few ways, such as send to the **GNU Screen** copy buffer `-screen`, *GNU Screen* window `-window #`, cursor position `-stdout`, or wire to a file `-stdout file.txt`. The X11 *Clipboard* is also destination and it selected with `-clip 1`, `2`, or `3` where `1` is Primary selection, `2` Secondary, and `3` is the Clipboard.
 
 
 PGW provides a couple options to improve locating items and accessing them.
@@ -155,16 +152,20 @@ PGW provides a couple options to improve locating items and accessing them.
 
 **Adding website account**
   - Enter password with the interactive prompt
-    - `pgw -d example.com -k alice -e` then enter your password at the prompt
-      - For username confidentiality
-        - `pgw -d example.com -k username -e`
-        - `pgw -d example.com -k password -e`
+    - Enter `pgw -d example.com -accnt main -e`
+        - Then enter your username at the prompt
+        - Finaly enter and verify your password with `pinentry`
       - For url confidentiality
-        - `pgw -d website01 -k username -e`
-        - Save the url to a file named *url* and add it to the domain's Vault
-          - `pgw -d website01 -v url -e`
+        - `pgw -d website01 -accnt main -e`
+        - Save the url as a key *url* 
+          - `pgw -d website01 -k url -e`
   - Enter Password as Parameter
-    - `-v $Value` can added for scripted addition of passwords/key values
+    - Password can be added as a param or from stdout of other app like `passgen`
+      - `pgw -d website01 -accnt "$(passgen 48)" -e`
+  - Login to example.com with Auto-Type
+    1. With your cursor in the *Username* box on the website run this
+    2. `pgw -d website01 -accnt main -auto`
+    3. Then click back on the web browser and *PGW* will log you in
 
 
 **Adding a file to the vault**
