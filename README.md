@@ -153,24 +153,26 @@ PGW provides a couple options to improve locating items and accessing them.
 **Adding website account**
   - Enter password with the interactive prompt
     - Enter `pgw -d example.com -accnt main -e`
-        - Then enter your username at the prompt
-        - Finaly enter and verify your password with `pinentry`
-      - For url confidentiality
-        - `pgw -d website01 -accnt main -e`
-        - Save the url as a key *url* 
-          - `pgw -d website01 -k url -e`
+        - Then enter your username and your password with `pinentry`
+    - For url confidentiality use false or abstract *Domain* name
+      - Then save the url as a key *url* which is useful with Auto-Type anyway
+        - `pgw -d website01 -k url -e`
   - Enter Password as Parameter
     - Password can be added as a param or from stdout of other app like `passgen`
-      - `pgw -d website01 -accnt "$(passgen 48)" -e`
-  - Login to example.com with Auto-Type
-    1. With your cursor in the *Username* box on the website run this
-    2. `pgw -d website01 -accnt main -auto`
-    3. Then click back on the web browser and *PGW* will log you in
+      - `pgw -d website01 -accnt troll -v "$(passgen 48)" -e`
+  - At example.com login page use Auto-Type to log you in
+    - `pgw -d website01 -accnt main -auto`
+    - Then click back on the web browser
 
 
 **Adding a file to the vault**
   - PGW makes it easy to store related documents 
-    - `pgw -d exampleTaxService.com -v EZ1040-2013.pdf -e`
+    - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
+**Get a file from a vault**
+  - Just redirect `-stdout` to a file name. Like all other Unix commands
+    - `pgw -d tax.examplecom -stdout >taxes.pdf`
+  - You could just select from the list and specify the full path to output file
+    - `pgw -stdout ~/taxes.pdf`
 
 
 Confidentiality, Integrity, and Availability (CIA)
