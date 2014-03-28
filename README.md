@@ -151,6 +151,9 @@ PGW provides a couple options to improve locating items and accessing them.
 
 
 **Working with the Keys**
+
+
+- **Add Keys**
   - Enter password with the interactive prompt
     - Enter `pgw -d example.com -accnt main -e`
         - Then enter your username and your password with `pinentry`
@@ -160,22 +163,34 @@ PGW provides a couple options to improve locating items and accessing them.
   - Enter Password as Parameter
     - Password can be added as a param or from stdout of other app like `passgen`
       - `pgw -d website01 -accnt troll -v "$(passgen 48)" -e`
+
+- **It easy to use Auto-Type**
   - At example.com login page use Auto-Type to log you in
     - `pgw -d website01 -accnt main -auto`
     - Then click back on the web browser
 
 
 **Working with the Vault**
-  - It's easy to *encrypt*, *sync*, *backup*, and *version control* related documents
-    - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
-* **Geting a file from a vault**
+
+
+- It's easy to **encrypt, sync, backup, and version control** related documents
+  - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
+
+- **Geting a file from a vault**
   - Just redirect `-stdout` to a file name. Like all other Unix commands
     - `pgw -d tax.examplecom -stdout >taxes.pdf`
   - You could just select from the list and specify the full path to output file
     - `pgw -stdout ~/taxes.pdf`
-  - Just like with *Keys* you can view old versions of files
+
+
+**Working with Version Control**
+
+
+- **View old Revisions**
+  - You can *view old versions* of keys and files just as easy as the current version
     - Simply add `-chrono` to the same commands and select the version to view
-* **Recover** old version of a file
+
+- **Recover** old version of keys and files
     - Works the same as viewing old version except add `-revert` instead
       - `pgw -stdout ~/taxes.pdf -revert` and select the version you want
     - You can *always* recover from a recovery. *Git revert* is non-destructive
