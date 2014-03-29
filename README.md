@@ -135,15 +135,15 @@ PGW provides a couple options to improve locating items and accessing them.
 * **Auto-Type** with `-auto`
 * **Add Account** in one go with `-accnt`
   * This option is ideal with `-auto` to log into websites
-* **View Old Revisions** `-chrono`
+* **View Old Revisions** `-version`
 * **Recover Old Revisions** `-revert`
 * **Cryptboard Support** if [Cryptboard](http://github.com/tdwyer/cryptboard "Cryptboard") is installed `-clip` will put *encrypted* messages in the clipboard
 * **Auto-Gen Wallet** the *Wallet* will be created
-  * `git init` will run
   * `pgw.conf` will be created
+  * `git init` will run
 * **Multi-Wallet Support** Simply by creating symbolic links
   * Have a *Work Wallet* `ln -s /usr/bin/pgw pgw:work`
-    * Now run `pgw:work` to create and use the wallet `$HOME/.gnupg/work`
+  * Now run `pgw:work` to create and use the wallet `$HOME/.gnupg/work`
 * **Per-Wallet Configuration** `wallet/.pgw.conf`
 
 
@@ -156,13 +156,13 @@ PGW provides a couple options to improve locating items and accessing them.
 - **Add Keys**
   - Enter password with the interactive prompt
     - Enter `pgw -d example.com -accnt main -e`
-        - Then enter your username and your password with `pinentry`
-    - For url confidentiality use false or abstract *Domain* name
-      - Then save the url as a key *url* which is useful with Auto-Type anyway
-        - `pgw -d website01 -k url -e`
+    - Then enter your username and your password with `pinentry`
+  - For url confidentiality use false or abstract *Domain* name
+    - Then save the url as a key *url* which is useful with Auto-Type anyway
+    - `pgw -d website01 -k url -e`
   - Enter Password as Parameter
     - Password can be added as a param or from stdout of other app like `passgen`
-      - `pgw -d website01 -accnt troll -v "$(passgen 48)" -e`
+    - `pgw -d website01 -accnt troll -v "$(passgen 48)" -e`
 
 - **It easy to use Auto-Type**
   - At example.com login page use Auto-Type to log you in
@@ -178,9 +178,9 @@ PGW provides a couple options to improve locating items and accessing them.
 
 - **Geting a file from a vault**
   - Just redirect `-stdout` to a file name. Like all other Unix commands
-    - `pgw -d tax.examplecom -stdout >taxes.pdf`
-  - You could just select from the list and specify the full path to output file
-    - `pgw -stdout ~/taxes.pdf`
+    - `pgw -d tax.examplecom -v EZ1040-2013.pdf -stdout >taxes.pdf`
+  - You could just select from the list and even at the name of the output file
+    - `pgw -stdout taxes.pdf`
 
 
 **Working with Version Control**
@@ -188,12 +188,13 @@ PGW provides a couple options to improve locating items and accessing them.
 
 - **View old Revisions**
   - You can *view old versions* of keys and files just as easy as the current version
-    - Simply add `-chrono` to the same commands and select the version to view
+    - Simply add `-version` to the same commands and select the version to view
 
 - **Recover** old version of keys and files
     - Works the same as viewing old version except add `-revert` instead
       - `pgw -stdout ~/taxes.pdf -revert` and select the version you want
-    - You can *always* recover from a recovery. *Git revert* is non-destructive
+    - You can *always* recover from a recovery the same as any other recovery
+      - Technically, *PGW* will cherry pick the old version and make a *new commit*
 
 
 Confidentiality, Integrity, and Availability (CIA)
