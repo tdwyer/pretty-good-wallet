@@ -155,14 +155,14 @@ PGW provides a couple options to improve locating items and accessing them.
 
 - **Add Keys**
   - Enter password with the interactive prompt
-    - Enter `pgw -d example.com -accnt main -e`
+    - Enter `pgw -d example.com -accnt main -enc`
     - Then enter your username and your password with `pinentry`
   - For url confidentiality use false or abstract *Domain* name
     - Then save the url as a key *url* which is useful with Auto-Type anyway
-    - `pgw -d website01 -k url -e`
+    - `pgw -d website01 -k url -enc`
   - Enter Password as Parameter
     - Password can be added as a param or from stdout of other app like `passgen`
-    - `pgw -d website01 -accnt troll -v "$(passgen 48)" -e`
+    - `pgw -d website01 -accnt troll -v "$(passgen 48)" -enc`
 
 - **It easy to use Auto-Type**
   - At example.com login page use Auto-Type to log you in
@@ -174,7 +174,7 @@ PGW provides a couple options to improve locating items and accessing them.
 
 
 - It's easy to **encrypt, sync, backup, and version control** related documents
-  - `pgw -d tax.example.com -v EZ1040-2013.pdf -e`
+  - `pgw -d tax.example.com -v EZ1040-2013.pdf -enc`
 
 - **Geting a file from a vault**
   - Just redirect `-stdout` to a file name. Like all other Unix commands
