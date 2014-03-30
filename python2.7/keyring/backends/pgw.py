@@ -15,7 +15,7 @@
 #         NOTES: Best with "keychain" which maintains an unlocked gpg-agent
 #        AUTHOR: Thomas Dwyer devel@tomd.tel
 #  ORGANIZATION: http://tomd.tel/
-#      REVISION: v10.5
+#      REVISION: v10.7
 #===============================================================================
 #
 from keyring.backend import KeyringBackend
@@ -75,7 +75,7 @@ class Wallet(KeyringBackend):
 
     if ' ' in password:
       raise PasswordSetError("pgw is unable save password with spaces in batch mode")
-    args = ["pgw", "-e", "-d", domain, "-k", username, "-v", password]
+    args = ["pgw", "-enc", "-d", domain, "-k", username, "-v", password]
     out = ''
     try:
       out = subprocess.check_output(args).strip()

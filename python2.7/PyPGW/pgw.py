@@ -295,7 +295,7 @@ class Interface(object):
       ):
     """Set password for the username of the domain
     """
-    return self.shell(["pgw", "-e", "-d", domain, "-k", keyname, "-v", password])
+    return self.shell(["pgw", "-enc", "-d", domain, "-k", keyname, "-v", password])
 
   def get_VFileValue(
       self,
@@ -313,7 +313,7 @@ class Interface(object):
       ):
     """Takes domain of Vault() and the full path to file to put in the Vault()
     """
-    return self.shell(["pgw", "-e", "-d", domain, "-f", filepath])
+    return self.shell(["pgw", "-enc", "-d", domain, "-f", filepath])
 
   def populate_wallet(
       self,

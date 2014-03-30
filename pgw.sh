@@ -1,64 +1,210 @@
 #!/bin/bash
 #
-#   GpgWallet       GPLv3              v10.9.3
+#   GpgWallet       GPLv3              v10.10
 #   Thomas Dwyer    <devel@tomd.tel>   http://tomd.tel/
 #
 SELF="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 1)"
-WAL="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 2)"
-if [[ "${SELF}" == "${WAL}" ]] ;then WALLET="wallet" ;else WALLET="${WAL}" ;fi
+WALLET="$(echo "${0}" | rev | cut -d '/' -f 1 | rev | cut -d ':' -f 2)"
+if [[ "${SELF}" == "${WALLET}" ]]
+    then WALLET="wallet"
+    else WALLET="${WALLET}"
+fi
 [[ ! -d ${GNUPGHOME} ]] && GNUPGHOME="${HOME}/.gnupg"
 WAL="${GNUPGHOME}/${WALLET}"
 CONFIG="${WAL}/.pgw.conf"
-# - - - Setup/Read Configuration File - - - #
+HELP="
+Usage ${SELF} [-e] [-d domain] [-k user (-v pass)] [-f filename] [-accnt name]
+        [-stdout] [-auto] [-clip] [-screen] [-window #]
+        [-tree] [-list] [-update] [-version (commit)] [-revert (commit)]
+
+View long help with --help
+
+-enc            :Encrypt
+-d  domainname  :Domain, Each domain contains a Keyring and a Vault
+-k  keyname     :Keyring, Think User/Password. Value i.e. passwd is prompted for
+    -v          :Key Value, Provide value in command instead of through a prompt
+-f  filename    :Vault, Encrypted file management with native interface
+-accnt  name    :Account pair (user:name pass:name)
+-stdout         :Send to plaintext to stdout
+-auto           :Auto-Type into user selected window. Best used with -accnt
+-clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary. DEFAULT: 1
+-screen         :Send to gnu-screen copy buffer
+-window #       :Send to stdin of gnu-screen window Number
+-tree           :View wallet Tree Search with Domain, Key, Accnt and/or Filename
+-list           :View wallet List Search with Domain, Key, Accnt and/or Filename
+-list -version  :List Versions Search with Domain, Key, Accnt and/or File name
+-update         :Pull latest wallet from git server
+-version commit :View older version. DEFAULT: Select from list
+-revert  commit :Revert to older version. DEFAULT: Select from list
+-clone-remote URI :Clone wallet from remote server
+-add-remote   URI :Add remote server
+"
+MANLY_HELP="
+Usage ${SELF} (item) (action)
+
+View short help with -h
+
+Define Item :: ${SELF} -d example.com -accnt main
+--------------------------------------------------------------------------------
+ -d    domain     :Domain name (contains Keyring and Vault)
+ -f    file       :File to add/access to/from Vault
+ -k    key        :Key name
+  -v   value      :Value to store for key. Useful for scripting
+                    Default prompt for value with pinentry
+ -accnt name      :Account name
+                    Creates two keys. user:<accnt> and pass:<accnt>
+                    * Add account with -enc (supports -v or pinentry)
+                    * Supported by -auto for Auto-Typed wiebsite login
+
+
+Add Item to Wallet :: ${SELF} -d example.com -accnt main -enc
+--------------------------------------------------------------------------------
+ -enc             :Encrypt, Add defined item to the wallet
+
+
+Access Item in Wallet :: ${SELF} -d example.com -accnt main -auto
+--------------------------------------------------------------------------------
+If Item is not fully defined, you will be prompted to select from a list items
+
+ -auto            :Auto-Type
+                    Works like KeePassX auto-type but you click on target window
+                    Most useful when with the -accnt item definition
+ -clip   #        :Add to X11 clipboard (Default is Primary Selection)
+                    3=Clipboard 2=Secondary 1=Primary (Primary is Default)
+                    * middle-click to paste Primary
+                    * If Cryptboard is installed
+                     -clip will only put encrypted messages in X11 Clipboard
+ -stdout          :GPG decrypt directly to standard out
+                    Useful for scripting
+
+  ..GNU Screen Support..
+ -screen          :Put in GNU Screen copy register ( Paste with Ctrl+A ] )
+ -window #        :Stuff to stdin of GNU Screen Window-#
+                    Think auto-type for screen
+
+
+View and Search the Wallet :: ${SELF} -d example.com -t main
+--------------------------------------------------------------------------------
+ -tree             :Display wallet as a fancy Tree
+                     If terminal too small open in less tree (or if set, $PAGER)
+ -list             :List output in an easy-to-parse format for scripts
+                     Format='./domain/{keyring|vault}/item-name'
+ -list -version    :View list of versions
+
+  ..Search options..
+  Domain and/or Key, Account, or File name may be used to limit search results
+ -d      name      :Only domains matching name
+ -k      name      :Only keys matching name
+ -f      name      :Only files matchin name
+ -accnt  name      :Only keys matching name
+
+
+Version Control :: ${SELF}  -d example.com -k pass:main -clip -version
+--------------------------------------------------------------------------------
+ -version commit   :View old version
+                     Select from list if version commit is no provided
+ -revert  commit   :Revert to old version
+                     Select from list if version commit is no provided
+ -update           :Pull wallet update from sync server
+
+  ..Setup Remote Sync Server..
+ -clone-remote URI :Clone wallet from remote server
+                     URI user@git.ssh.example.com:git/wallet.git
+ -add-remote   URI :Add remote server
+                     URI user@git.ssh.example.com:git/wallet.git
+ -make-remote  URI :Create and Add remote server
+                     URI user@git.ssh.example.com
+                     * You need a SSH user account on the server
+                     * git must already be installed on the server
+"
+# - - - Check and Read Wallet Configuration - - - #
 read_config() {
-    if [[ ! -d ${WAL} ]] ;then
-        mkdir -p "${WAL}" ;chmod 0700 "${WAL}"
-        cp /usr/share/pgw/pgw.conf "${WAL}/.pgw.conf"
-        echo '.pgw.conf' >> "${WAL}/.gitignore"
-        gitInit
-    elif [[ ! -f ${CONFIG} ]] ;then
-        #
-        cp /usr/share/pgw/pgw.conf "${WAL}/.pgw.conf"
-    elif [[ ! -f "${WAL}/.gitignore" ]] ;then
-        #
-        echo '.pgw.conf' >> "${WAL}/.gitignore"
-    elif [[ ! -d "${WAL}/.git" ]] ;then
-        #
-        gitInit
+    if [[ -z $(ls ${WAL}) ]] ;then
+            rm -r "${WAL}"
+    fi
+    if [[ -d ${WAL} ]] ;then
+        if [[ ! -d "${WAL}/.git" ]] ;then
+            read_config ${@}
+            makeLocalRepository
+        fi
+    else
+        read_config ${@}
+        walletSetup
     fi
     #
     . $CONFIG 2>/dev/null # Source Wallet Configuration File
 }
+# - - - Wallet Setup - - - #
+walletSetup() {
+    echo
+    echo "Wallet ( ${WAL} ) not found"
+    config_env ${@}
+    mkdir -p "${WAL}" ;chmod 0700 "${WAL}"
+    echo
+    echo "Would you like to . . ."
+    echo "Clone a Wallet from your sync server?"
+    echo "Make a New sync server?"
+    echo "Local wallet only for now?"
+    read -p "clone make local abort: " ansr
+    case "${ansr,,}" in
+        clone)
+            cloneRemote
+        ;;
+        make)
+            makeRemote
+        ;;
+        local)
+            makeLocalWallet
+        ;;
+        *)
+            echo
+            echo "Abort..."
+            echo
+            rm -r "${WAL}"
+            echo "${MANLY_HELP}" # Well may be new user show Manly help
+            exit 0
+    esac
+}
+# - - - Make Local Wallet - - - #
+makeLocalWallet() {
+    gitInit
+    createConfig
+    gitSync
+    read -p "Would you like to add a Remote Server? (y/n): " add_yn
+    if [[ "${add_yn,,}" == "y" ]] ;then
+        addRemote
+    else
+        echo "Add a remote server with -add-remote or -make-remote"
+    fi
+}
+# - - - Git Setup - - - #
+makeLocalRepository() {
+    gitInit
+    gitSync
+    read -p "Would you like to add a Remote Server? (y/n): " add_yn
+    if [[ "${add_yn,,}" == "y" ]] ;then
+        addRemote
+    else
+        echo "Add a remote server with -add-remote or -make-remote"
+    fi
+}
+# - - - Create PGW Config - - - #
+createConfig() {
+    echo "KEYID=${KEYID}" >> "${WAL}/.pgw.conf"
+    echo "CIPHER=${CIPHER}" >> "${WAL}/.pgw.conf"
+    echo "DIGEST=${DIGEST}" >> "${WAL}/.pgw.conf"
+    echo "NO_COLOR=${NO_COLOR}" >> "${WAL}/.pgw.conf"
+    echo '.pgw.conf' >> "${WAL}/.gitignore"
+}
 # - - - Configure Runtime Environment - - - #
 config_env() {
-    HELP="
-    Usage ${SELF} [-e] [-d domain] [-k user (-v pass)] [-f filename] [-accnt name]
-            [-stdout] [-auto] [-clip] [-screen] [-window #]
-            [-t (search-string)] [-update] [-version (commit)] [-revert (commit)]
-    -enc            :Encrypt
-    -d  domainname  :Domain, Each domain contains a Keyring and a Vault
-    -k  keyname     :Keyring, Think User/Password. Value i.e. passwd is prompted for
-        -v          :Key Value, Provide value in command instead of through a prompt
-    -f  filename    :Vault, Encrypted file management with native interface
-    -accnt  name    :Account pair (user:name pass:name)
-    -stdout         :Send to plaintext to stdout
-    -auto           :Auto-Type into user selected window. Best used with -accnt
-    -clip   #       :Send to selection 3=Clipboard 2=Secondary 1=Primary. DEFAULT: 1
-    -screen         :Send to gnu-screen copy buffer
-    -window #       :Send to stdin of gnu-screen window Number
-    -t  str         :Search wallet with: -d, -k, -v and/or string found in name
-    -update         :Pull latest wallet from git server
-    -version commit :View older version. DEFAULT: Select from list
-    -revert  commit :Revert to older version. DEFAULT: Select from list
-
-    NOTE: If Cryptboard available, -clip will put encrypted message in X11 clipboard
-    "
     # [[ -z ${NO_COLOR} ]] Then tree and list output will have colors
     [[ -z ${KEYID} ]] && KEYID=""
     [[ -z ${CIPHER} ]] && CIPHER="TWOFISH"
     [[ -z ${DIGEST} ]] && DIGEST="SHA512"
     [[ -z ${PAGER} ]] && \
     PAGER=$(whereis -b less |cut -d ' ' -f 2)
+    SSH=$(whereis -b ssh |cut -d ' ' -f 2)
     GIT_EXE=$(whereis -b git |cut -d ' ' -f 2)
     XCLIP_EXE=$(whereis -b xclip |cut -d ' ' -f 2)
     XDO=$(whereis -b xdotool |cut -d ' ' -f 2)
@@ -97,27 +243,11 @@ config_env() {
 #
 # - - - Main - - - #
 main() {
+    config_env ${@}
     read_config ${@}
-    config_env ${@} # Runtime Environment has Priority
     parse_args ${@}
     validate ${@}
     run_cmd ${@}
-}
-# - - - Process Account - - - #
-main_accnt() {
-    local accnt_name="${obj}"
-    if [[ ${cmd} == "encrypt" && ! -z ${val} ]]
-        then local items="pass user"
-        else local items="user pass"
-    fi
-    for item in ${items} ;do
-        typ='keyring'
-        obj="${item}:${accnt_name}"
-        validate ${@}
-        run_cmd ${@}
-        val=''
-        [[ ${invalid} ]] && break
-    done
 }
 # - - - Parse the arguments - - - #
 parse_args() {
@@ -128,8 +258,11 @@ parse_args() {
         [[ ${value} ]] && i=$(expr ${i} + 1)
         #
         case ${flag} in
-            -h|--help)
+            -h)
                 cmd+='help'
+            ;;
+            --help)
+                cmd+='manlyhelp'
             ;;
             -enc)
                 cmd+='encrypt'
@@ -171,8 +304,11 @@ parse_args() {
             -window)
                 cmd+='decrypt' ; dst='window' ; sel="${value}"
             ;;
-            -t)
-                cmd+='tree' ; str="${value}"
+            -tree)
+                cmd+='tree'
+            ;;
+            -list)
+                cmd+='list'
             ;;
              -update)
                 cmd+='update'
@@ -182,6 +318,15 @@ parse_args() {
             ;;
             -revert)
                 cmd+='revert' ; treeish="${value}"
+            ;;
+            -clone-remote)
+                cmd+='clone-remote' ; URI="${value}"
+            ;;
+            -add-remote)
+                cmd+='add-remote' ; URI="${value}"
+            ;;
+            -make-remote)
+                cmd+='make-remote' ; URI="${value}"
         esac
     done
 }
@@ -209,6 +354,10 @@ validate() {
             echo "${HELP}"
             exit 0
         ;;
+        manlyhelp)
+            echo "${MANLY_HELP}"
+            exit 0
+        ;;
         encrypt)
             validateEncrypt
         ;;
@@ -216,6 +365,9 @@ validate() {
             validateDecrypt
         ;;
         tree)
+            local ok=true
+        ;;
+        list|list:version:|:version:list)
             local ok=true
         ;;
         :accnt:encrypt|:accnt:decrypt|encrypt:accnt:|decrypt:accnt:)
@@ -229,6 +381,15 @@ validate() {
         ;;
         revert)
             validateRevert
+        ;;
+        clone-remote)
+            local ok=true
+        ;;
+        add-remote)
+            local ok=true
+        ;;
+        make-remote)
+            local ok=true
         ;;
         *)
             echo " - -> Command Not Supported: [ ${SELF} ${@} ]"
@@ -305,9 +466,6 @@ run_cmd() {
         help)
             echo "${help}"
         ;;
-        *:accnt:*)
-            accnt_action
-        ;;
         encrypt)
             encryptValue
         ;;
@@ -319,17 +477,35 @@ run_cmd() {
             local term_lines=$(tput lines)
             treeUI ${tree_lines} ${term_lines}
         ;;
+        list)
+            itemIndex
+        ;;
+        :version:list|list:version:)
+            versionIndex
+        ;;
         update)
             gitPull
+        ;;
+        revert)
+            gitRevert
+            gitSync
+        ;;
+        clone-remote)
+            cloneRemote
+        ;;
+        add-remote)
+            addRemote
+        ;;
+        make-remote)
+            makeRemote
+        ;;
+        *:accnt:*)
+            accnt_action
         ;;
         *:version:*)
             gitRevert
             decryptValue
             gitClean
-        ;;
-        revert)
-            gitRevert
-            gitSync
     esac
 }
 # - - - Account Action - - - #
@@ -409,7 +585,7 @@ pinentryKeyValue() {
         invalid=true
     fi
 }
-# - - - Decyrpt value - - - #
+# - - - Decrypt value - - - #
 decryptValue() {
     case "${dst}" in
         stdout)
@@ -452,16 +628,16 @@ decryptValue() {
 }
 # - - - Git init - - - #
 gitInit() {
-    ${GIT} init
-    gitSync
-}
-# - - - Git pull - - - #
-gitPull() {
-    ${GIT} pull origin master
+    cd ${WAL}
+    ${GIT_EXE} init
 }
 # - - - Git add - - - #
 gitAdd() {
     ${GIT} add --all
+}
+# - - - Git pull - - - #
+gitPull() {
+    ${GIT} pull origin master
 }
 # - - - Git commit - - - #
 gitCommit() {
@@ -484,6 +660,10 @@ gitRm() {
 gitMv() {
     ${GIT} mv "${dom}/${typ}/${obj}" "${dom}/${typ}/${val}"
 }
+# - - - Git Revert - - - #
+gitRevert() {
+    ${GIT} show ${treeish}:${dom}/${typ}/${obj} > "${WAL}/${dom}/${typ}/${obj}"
+}
 # - - - Git clean working directory - - - #
 gitClean() {
     for new_file in $(${GIT} status --porcelain |grep -G '^.?' |sed 's/^...//g')
@@ -499,23 +679,67 @@ gitSync() {
     gitCommit
     [[ ${remotes} ]] && gitPush
 }
-# - - - Git Revert - - - #
-gitRevert() {
-    ${GIT} show ${treeish}:${dom}/${typ}/${obj} > "${WAL}/${dom}/${typ}/${obj}"
+# - - - Add Remote - - - #
+addRemote() {
+    if [[ -z ${URI} ]] ;then
+        echo
+        echo "Enter the SSH URI for the remote repository"
+        echo "i.e. user@git.ssh.example.com:git/${WAL}.git"
+        read -p "URI: " URI
+    fi
+    if [[ ${URI} ]]
+        then ${GIT} remote add origin "${URI}"
+        gitPush
+    else
+        echo "Abort... No URI"
+    fi
 }
-# - - - tree command view - - - #
-treeUI() {
-    [[ -z ${1} ]] && local min=1 || local min=${1}
-    [[ -z ${2} ]] && local max=10 || local max=${2}
-    cd ${WAL} ;a="--noreport --prune" ;s="*${str}*"
-    [[ ${typ} == "vault" ]] && s="*.asc" # FIXME: I am very annoying
-    [[ ${typ} == "keyring" ]] && a+=" -I *.asc"
-    a+=" -P "
-    if [[ ${min} -lt ${max} ]]
-        then ${TREE} ${a} "${s}" ${dom}
-    elif [[ ${NO_COLOR} ]]
-        then ${TREE} ${a} "${s}" ${dom} | ${PAGER}
-        else ${TREE} ${a} "${s}" ${dom} -C | ${PAGER}
+# - - - Clone Remote Wallet - - - #
+cloneRemote() {
+    if [[ -z ${URI} ]] ;then
+        echo
+        echo "Enter the SSH URI for the remote repository"
+        echo "i.e. user@git.ssh.example.com:git/${WAL}.git"
+        read -p "URI: " URI
+    fi
+    if [[ ${URI} ]] ;then
+        [[ -d ${WAL} ]] && mv ${WAL} ${WAL}-preclone
+        mkdir -p ${WAL}
+        ${GIT} clone "${URI}"
+        [[ -f ${WAL}-preclone/.pgw.conf ]] && \
+            cp ${WAL}-preclone/.pgw.conf ${WAL}/.pgw.conf
+        [[ -f ${WAL}-preclone/.gitignore ]] && \
+            cp ${WAL}-preclone/.gitignore ${WAL}/.gitignore
+        #
+        [[ -f ${WAL}/.pgw.conf ]] && createConfig
+        gitSync
+    else
+        echo "Abort... No URI"
+    fi
+}
+# - - - Create Remote - - - #
+makeRemote() {
+    echo
+    echo " - - - To create a Remote Sync Server - - -"
+    echo
+    if [[ -z ${URI} ]] ;then
+        echo "Enter the SSH login URI for server to create repository on"
+        echo "i.e. user@ssh.example.com"
+        read -p "URI: " URI
+    fi
+    if [[ ${URI} ]] ;then
+        ${SSH} ${URI} "mkdir -p ~/git/${WAL}.git"
+        ${SSH} ${URI} "cd ~/git/${WAL}.git ;git init --bare"
+        URI+="git/${WAL}.git"
+        addRemote
+        echo
+        echo "This wallet can be used on and synchronized with other computers"
+        echo "To do so run the following command on the other computers"
+        echo
+        echo "${SELF} -clone-remote ${URI}"
+        echo
+    else
+        echo "Abort... No URI"
     fi
 }
 # - - - Version Select - - - #
@@ -523,76 +747,162 @@ versionSelect() {
     echo
     echo "                    :: Select Version ::"
     echo
-    cd ${WAL} ;versionIndex
-    genList
+    index=$(versionIndex |sed -e 's/ /#/g')
+    numberedList "version"
     echo
     read -p "$(echo -ne ${WHT}) Enter choice #$(echo -ne ${clr}) " choice
-    local line=$(echo ${versionIndex} |sed 's/ /\n/g' |sed -n "${choice}p")
+    local line=$(echo "${index}" |sed -n "${choice}p")
     treeish="$(echo ${line} |cut -d '#' -f 1)"
-    versionIndex=''
-}
-# - - - Version Index - - - #
-versionIndex() {
-    versionIndex="$(${GIT} log --oneline ${dom}/${typ}/${obj} |sed 's/ /#/g')"
+    index=''
 }
 # - - - Select from list - - - #
 objectSelect() {
     echo
     echo "                     :: Select Item ::"
     echo
-    cd ${WAL} ;objectIndex
-    genList
+    index=$(itemIndex)
+    numberedList "item"
     echo
     read -p "$(echo -ne ${WHT}) Enter choice #$(echo -ne ${clr}) " choice
-    dom=$(echo ${objectIndex} |cut -d ' ' -f ${choice} |cut -d '/' -f 1)
-    typ=$(echo ${objectIndex} |cut -d ' ' -f ${choice} |cut -d '/' -f 2)
-    obj=$(echo -n ${objectIndex} |cut -d ' ' -f ${choice} |cut -d '/' -f 3)
-    objectIndex=''
+    dom=$(echo "${index}" |sed -n "${choice}p" |cut -d '/' -f 1)
+    typ=$(echo "${index}" |sed -n "${choice}p" |cut -d '/' -f 2)
+    obj=$(echo -n "${index}" |sed -n "${choice}p" |cut -d '/' -f 3)
+    index=''
 }
-# - - - Gen index - - - #
-objectIndex() {
-    objectIndex=$(find $(ls --color=never) -type f)
-    if [[ ${dom} ]] ;then
-        objectIndex=$(echo ${objectIndex} |sed 's/ /\n/g' |grep -E "${dom}//*")
-    fi
-}
-# - - - Gen select list - - - #
-genList() {
-    [[ ${objectIndex} ]] && local lines=${objectIndex}
-    [[ ${versionIndex} ]] && local lines=${versionIndex}
+# - - - tree command view - - - #
+treeUI() {
+    local tree_lines=${1}
+    local term_lines=${2}
     cd ${WAL}
-    local ln=0
-    if [[ ${NO_COLOR} ]] ;then
-        local color_1="" ;local color_2=""
-    else
-        evalColors
-        local color_1=${blu} ;local color_2=${wht}
+    local tree_cmd="${TREE} --noreport --prune"
+    local search=""
+    if [[ ${typ} =~ ":accnt:" ]]
+        then local search+="keyring:"
+        else local search+="${typ}:"
     fi
-    for line in $(echo $lines) ;do
-        local ln=$(expr $ln + 1)
-        # Set color
-        if [[ -z ${t} ]] ;then
-            local t='togle'
-            local color=${color_1}
-        else
-            local t=''
-            local color=${color_2}
-        fi
-        echo -ne "${color}"
-        if [[ ${objectIndex} ]] ;then
-            dom="$(echo ${line} |cut -d '/' -f 1)"
-            typ="$(echo ${line} |cut -d '/' -f 2)"
-            obj="$(echo ${line} |cut -d '/' -f 3)"
-            n=$(expr 26 - $(echo -n ${dom} |wc -c))
-            while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
-            n=$(expr 10 - $(echo -n ${typ} |wc -c))
-            while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
-            echo -ne "-> ${dom}- ${typ}${ln} - ${obj}"
-        elif [[ ${versionIndex} ]] ;then
-            echo -ne "-> ${ln} - ${line}" |sed -e 's/#/ /g'
-        fi
-        echo -e "${clr}"
-    done
+    [[ ${tree_lines} -gt ${term_lines} ]] && search+="pager:"
+    [[ ${NO_COLOR} ]] && search+="nocolor:"
+    case ${search} in
+        vault:)
+            ${tree_cmd} -P "*.asc" ${dom}
+        ;;
+        vault:pager:)
+            ${tree_cmd} -C -P "*.asc" ${dom} | ${PAGER}
+        ;;
+        vault:pager:nocolor:)
+            ${tree_cmd} -n -P "*.asc" ${dom} | ${PAGER}
+        ;;
+        vault:nocolor:)
+            ${tree_cmd} -n -P "*.asc" ${dom}
+        ;;
+        keyring:)
+            ${tree_cmd} -I "*.asc" ${dom}
+        ;;
+        keyring:pager:)
+            ${tree_cmd} -C -I "*.asc" ${dom} | ${PAGER}
+        ;;
+        keyring:pager:nocolor:)
+            ${tree_cmd} -n -I "*.asc" ${dom} | ${PAGER}
+        ;;
+        keyring:nocolor:)
+            ${tree_cmd} -n -I "*.asc" ${dom}
+        ;;
+        pager:)
+            ${tree_cmd} -C ${dom} | ${PAGER}
+        ;;
+        pager:nocolor:)
+            ${tree_cmd} -n ${dom} | ${PAGER}
+        ;;
+        nocolor:)
+            ${tree_cmd} -n ${dom}
+        ;;
+        *)
+            ${tree_cmd} ${dom}
+    esac
+}
+# - - - Version Index - - - #
+versionIndex() {
+    cd ${WAL}
+    [[ ${typ} =~ ":accnt:" ]] && local KorF="keyring" || local KorF="${typ}"
+    ${GIT} --no-pager log --oneline *${dom}*/*${KorV}*/*${obj}*
+}
+# - - - Item Index - - - #
+itemIndex() {
+    cd ${WAL}
+    local domains="ls --color=never"
+    local find_cmd="find $(${domains}) -type f"
+    local search=""
+    [[ ${dom} ]] && local search+="dom:"
+    [[ ${typ} ]] && local search+="typ:"
+    [[ ${obj} ]] && local search+="obj:"
+    case ${search} in
+        dom:)
+            ${find_cmd} |grep -E "${dom}//*"
+        ;;
+        dom:typ:)
+            ${find_cmd} |grep -E "${dom}//*" |grep -E "${typ}//*"
+        ;;
+        dom:typ:obj:)
+            ${find_cmd} |grep -E "${dom}//*" |grep -E "${typ}//*" |grep "${obj}"
+        ;;
+        dom:obj:)
+            ${find_cmd} |grep -E "${dom}//*" |grep -E "${obj}//*"
+        ;;
+        typ:obj:)
+            ${find_cmd} |grep -e "${typ}//*" |grep "${obj}"
+        ;;
+        obj:)
+            ${find_cmd} |grep "${obj}"
+        ;;
+        typ:)
+            ${find_cmd} |grep -e "${typ}//*"
+        ;;
+        *)
+            ${find_cmd}
+    esac
+}
+# - - - Numbered list - - - #
+numberedList() {
+    local index_type=${1}
+    local ln=1
+    if [[ -z ${NO_COLOR} ]]
+        then evalColors ;color_one=${blu} ;color_two=${wht}
+        else color_one='' ;color_two=''
+    fi
+    case ${index_type} in
+        version)
+            local color=${color_one}
+            for line in ${index} ;do
+                echo -ne "${color}"
+                echo -ne "-> ${ln} - ${line}" |sed -e 's/#/ /g'
+                echo -e "${clr}"
+                if [[ ${color} == ${color_one} ]]
+                    then local color=${color_two}
+                    else local color=${color_one}
+                fi
+                local ln=$(expr $ln + 1)
+            done
+        ;;
+        item)
+            local color=${color_one}
+            for line in ${index} ;do
+                echo -ne "${color}"
+                dom="$(echo ${line} |cut -d '/' -f 1)"
+                typ="$(echo ${line} |cut -d '/' -f 2)"
+                obj="$(echo ${line} |cut -d '/' -f 3)"
+                n=$(expr 26 - $(echo -n ${dom} |wc -c))
+                while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;dom+=" " ;done
+                n=$(expr 10 - $(echo -n ${typ} |wc -c))
+                while [[ $n -gt 0 ]] ;do n=$(expr $n - 1) ;typ+=" " ;done
+                echo -ne "-> ${dom}- ${typ}${ln} - ${obj}"
+                echo -e "${clr}"
+                if [[ ${color} == ${color_one} ]]
+                    then local color=${color_two}
+                    else local color=${color_one}
+                fi
+                local ln=$(expr $ln + 1)
+            done
+    esac
 }
 # - - - Color me encrypted - - - #
 evalColors() {
