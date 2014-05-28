@@ -3,6 +3,19 @@ PGW - Pretty Good Wallet
 *A password manager you can work with*
 
 
+Project Status
+--------------
+
+
+PGW is currently in a transition stage. PGW has been completely rewritten in Gnu AWK. A URI has been defined to facilitate integration with a planned TCP server. Running PGW as a network accessible server will allow for many more security features to restrict access to the GnuPG Agent socket.
+
+As a result the following documentation is out of date.
+
+
+Why?
+----
+
+
 * Have you ever been concerned about *How* your password manager is encrypting information?
 * Have you ever wanted to use a cipher that is unsupported by your password manager?
 * Have you ever wanted to easily run *Your own*  password sync server?

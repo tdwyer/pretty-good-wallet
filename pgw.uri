@@ -1,0 +1,85 @@
+(last updated 2014-04-05 )
+
+Resource Identifier (RI) Scheme name: pgw
+Status: \000\[
+
+  URI scheme name.
+    pgw
+
+  URI scheme syntax.
+    TCP/IP URI:
+    pgw://[<keyinfo>]@<domain[<object-name>][?<action>][=<argument>]
+
+    Unix CLI Relative URI:
+    pgw<SP>[<keyinfo>]@<domain[<object-name>][,<action>][=<argument>]
+
+    Examples:
+
+    Add Account Group:
+    pgw /main@tomd.tel,gpg
+
+    Add disk password:
+    pgw disk@tomd.tel,gpg
+
+    Decrypt disk password to X11 selection Clipboard:
+    pgw disk@tomd.tel,cilp=3
+
+    Add file.txt to comment.asc:
+    pgw tomd.tel:comment,gpg=out.txt
+    pgw tomd.tel:,gpg=comment.txt
+
+    Decrypt file.asc to file:
+    pgw tomd.tel:file.asc,stdout=/tmp/out.txt
+    pgw tomd.tel:comment
+
+  URI scheme semantics.
+
+    scheme-name   = "pgw:" hier-part
+    hier-part     = < ":" > path
+    keyinfo       = [ ( "//" | "/" | ) < ALPHA / DIGIT / "-" / "." > ]
+    authority     = [ <keyinfo> "@" ] hostname
+    hostname      = ( ALPHA / DIGIT / "-" / "_" / "." )
+    commit        = [ "/" < HEX > ]
+    filename      = [ < path-noscheme > ".asc" ]
+    action-part   = ( "?" | "," )
+    action        = [ < ALPHA > ]
+    argument-part = "="
+    argument      = [ < argument > ]
+
+  Encoding considerations.
+    [US-ASCII]
+
+  Applications/protocols that use this URI scheme name.
+    Pretty Good Wallet, TCP/IP API:
+
+    TCP/IP interface still is in development. HTTPS or SFTP will
+    likely be the transport protocol. Additions to define remote
+    user-info and host may be added.
+
+    Pretty Good Wallet, Unix CLI:
+
+    ^( "//" | "/" ) < keyinfo > Defines account group
+    ( keyinfo ) and ( filename ) May not be used simultaneously
+    ( action ) May be omitted if default action
+    ( argument ) May be omitted if decrypt action argument is desired
+    ( action ) May not be omitted if ( argument ) is included
+
+  Interoperability considerations.
+    As specified in GNU Awk documentation
+    < GNU Awk 4.1.0, API: 1.0 (GNU MPFR 3.1.2-p5, GNU MP 6.0.0) >
+
+  Security considerations.
+    Unknown
+
+  Contact.
+    Thomas Dwyer <pgw-devel@tomd.tel>
+
+  Author/Change controller.
+    Thomas Dwyer <pgw-devel@tomd.tel>
+
+  References.
+    RFC 3986
+    RFC 4395
+    RFC 5234
+
+/* vim: set ts=2 sw=2 colorcolumn=70 tw=70 et :*/
