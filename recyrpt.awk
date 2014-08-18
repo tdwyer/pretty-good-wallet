@@ -5,10 +5,14 @@
 BEGIN {
   # If new key has same UID, i.e. bob@jackson.com, use the new Key's ID here
   NEW_UID="B79E7681"
-  GPG_BIN="/usr/local/bin/gpg2"
   WALLET_DIR="/home/thomas/.gnupg/wallet"
   WALLET_OLD=(WALLET_DIR"/old")
   WALLET_NEW=(WALLET_DIR"/new")
+  #
+  # Define commands with full path
+  GPG_BIN="/usr/local/bin/gpg2"
+  FIND_BIN="/usr/local/bin/gfind"
+  # Run
   main()
 }
 
@@ -25,12 +29,12 @@ function main() {
 function genWorkArray(  cmd, lines, line) {
   lines=""
   # Append Keys to lines
-  cmd=("cd "WALLET_OLD" ;/usr/local/bin/gfind -type f ! -name \"*\.asc\"")
+  cmd=("cd "WALLET_OLD" ;"FIND_BIN" -type f ! -name \"*\.asc\"")
   while ( (cmd | getline line) > 0) {
     lines=(lines" "line)
   }
   # Append Files to lines
-  cmd=("cd "WALLET_OLD" ;/usr/local/bin/gfind -type f ! -name \"*\.asc\"")
+  cmd=("cd "WALLET_OLD" ;"FIND_BIN" -type f ! -name \"*\.asc\"")
   while ( (cmd | getline line) > 0) {
     lines=(lines" "line)
   }
