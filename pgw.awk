@@ -5,35 +5,39 @@ BEGIN {
   URI=ARGV[1]
   HOME=ENVIRON["HOME"]
   PGWALLET=ENVIRON["PGWALLET"] # arg for now
-  if (! PGWALLET){PGWALLET=(HOME"/.gnupg/wallet")}
+  if (! PGWALLET){PGWALLET=(HOME"/.gnupg/wallet/main")}
   USER=ENVIRON["USER"]
   PWD=ENVIRON["PWD"]
   DISPLAY=ENVIRON["DISPLAY"]
   STY=ENVIRON["STY"]
+  TMUX=ENVIRON["TMUX"]
+  TMUX_PANE=ENVIRON["TMUX_PANE"]
   GPG_AGENT_INFO=ENVIRON["GPG_AGENT_INFO"]
   GPG_TTY=ENVIRON["GPG_TTY"]
   KEYIDS=""
   DIGEST="SHA512"
   CIPHER="TWOFISH"
-  HOSTNAMECMD="/usr/bin/hostname"
+  HOSTNAMECMD="/bin/hostname"
   READLINK="/usr/bin/readlink -f "
   SCREEN="/usr/local/bin/screen"
-  XCLIP="/usr/local/bin/xclip"
-  rv=(XCLIP" -selection primary:")
-  rv=(rv XCLIP" -selection secondary:"XCLIP" -selection clipboard")
-  split(rv,xclip,":") #rv strage but save mem
+  TMUX_EXE="/usr/bin/tmux"
+  XCLIP_EXE="/usr/local/bin/xclip"
+  xclip=(XCLIP_EXE" -selection primary:")
+  xclip=(xclip XCLIP_EXE" -selection secondary:"XCLIP_EXE" -selection clipboard")
+  split(xclip,XCLIP,":")
   if (length(pager) == 0) {pager="/usr/bin/less"}
   CRYPTBOARD="/usr/local/bin/cryptboard"
-  MKDIR="/usr/local/bin/mkdir"
-  PAGER="/usr/local/bin/less"
+  MKDIR="/bin/mkdir"
+  PAGER="/usr/bin/less"
   SSH="/usr/bin/ssh"
   XDO="/usr/local/bin/xdotool"
-  XDGO="/usr/bin/xdg-open"
+  XDGO="/usr/local/bin/xdg-open"
   PISH="/usr/local/bin/pish"
-  GPG="/usr/local/bin/gpg2"
-  gpg=(GPG" --armor --quiet --batch --yes ")
-  GIT="/usr/bin/git"
+  GPG_EXE="/usr/local/bin/gpg2"
+  GPG=(GPG_EXE" --armor --quiet --batch --yes ")
+  GIT="/usr/local/bin/git"
   git=("cd "PGWALLET" ;"GIT" -C "PGWALLET)
+  READ="/usr/local/bin/bashread"
   #
   rv=0
   main()
@@ -151,7 +155,7 @@ function account() {
   if(action != "auto"){
     print "The username has been decrypted."
     print "Enter Y to decrypt password, or N to quit."
-    cmd="read -p 'Enter (y/n): ' x ;echo -n ${x}"
+    cmd="bashread 'Enter (y/n): '"
     cmd | getline rv;                                               close(cmd)
     tolower(rv); if(rv != "y"){exit 0}
   }
@@ -220,13 +224,13 @@ function printLines(  f,i,e,line) {
 }
 # -----------------------------------------------------------------------------
 function encrypt(  cmd,gpgenc,X,x,H) {
-  gpgenc=(gpgBase" --sign")
+  gpgenc=(GPG" --sign")
   if (KEYIDS) {
     split(KEYIDS,keyids," ")
     for (key in keyids) {gpgenc=(gpgenc" -r "key)} 
   }
-  else {gpgEjnc=(gpgenc" --default-recipient-self ")}
-  cmd=(MKDIR" -p "fpto)
+  else {gpgenc=(gpgenc" --default-recipient-self ")}
+  cmd=(MKDIR" -p "fpto) # fpto = Full Path To Output File
   rv=system(cmd);                                                   close(cmd)
   #
   if (length(filename) != 0) {
@@ -240,9 +244,9 @@ function encrypt(  cmd,gpgenc,X,x,H) {
   }
   else if (keyinfo == "url" || keyinfo ~ "user:*") {
     #
-    cmd=("read -p 'Enter value for key ["keyinfo"]: ' x ;echo -n $x")
+    cmd=("bashread 'Enter value for key ["keyinfo"]: '")
     cmd | getline argument;                                         close(cmd)
-    cmd=("read -p 'Save ["keyinfo"]<"argument"> (y/n): ' x ;echo -n $x")
+    cmd=("bashread 'Save ["keyinfo"]<"argument"> (y/n): '")
     cmd | getline X; x=tolower(X);                                  close(cmd)
     cmd=("echo -n '"argument"' | "gpgenc" -o "fpto" -e ")
     if (x == "y")
@@ -250,14 +254,15 @@ function encrypt(  cmd,gpgenc,X,x,H) {
   }
   else{
     #
+    # If pipe exits nonzero Use failing grep command to return >1 to stderr
     realrv=";if [[ $PIPESTATUS -gt 0 ]] ;then grep -qs '' /XRz6euQoi9 ;fi"
     cmd=(PISH" | "gpgenc" -o "fpto" -e "realrv)
     rv=system(cmd);                                                 close(cmd)
     if (rv == 0) {
-      cmd=(gpg"  --gen-random 1 24")
+      cmd=(GPG"  --gen-random 1 24")
       cmd | getline S;                                              close(cmd)
-      H=(gpg" --print-md "DIGEST)
-      cmd=("[[ $(echo -n \""S"$("gpg" -d "fpto" )\" | "H") == ")
+      H=(GPG" --print-md "DIGEST)
+      cmd=("[[ $(echo -n \""S"$("GPG" -d "fpto" )\" | "H") == ")
       cmd=(cmd"$(echo -n \""S"$("PISH" ;(($? != 0)) && echo -n '"S"')\" | "H")")
       cmd=(cmd" ]]")
       rv=system(cmd);                                               close(cmd)
@@ -267,8 +272,8 @@ function encrypt(  cmd,gpgenc,X,x,H) {
 }
 # -----------------------------------------------------------------------------
 function out(  cmd) {
-  if (argument){cmd=(gpg" -o "argument" -d "fpto)}
-  else {cmd=(gpg" -d "fpto)}
+  if (argument){cmd=(GPG" -o "argument" -d "fpto)}
+  else {cmd=(GPG" -d "fpto)}
   rv=system(cmd);                                                   close(cmd)
   return ""
 }
@@ -280,7 +285,7 @@ function auto(  cmd) {
     while((cmd | getline xwindow) > 0){continue};                   close(cmd)
   }
   cmd=(XDO" windowraise "xwindow)
-  cmd=(cmd" ;"XDO" type \"$("gpg" -d "fpto")\"")
+  cmd=(cmd" ;"XDO" type \"$("GPG" -d "fpto")\"")
   cmd=(cmd" ;"XDO" key --window "xwindow)
   print object
   if(object ~ "^user"){cmd=(cmd" Tab")}else{cmd=(cmd" Return")}
@@ -289,23 +294,23 @@ function auto(  cmd) {
 }
 # -----------------------------------------------------------------------------
 function xdgopen(  cmd) {
-  cmd=(XDGO" \"$("gpg" -d "fpto")\"")
+  cmd=(XDGO" \"$("GPG" -d "fpto")\"")
   rv=system(cmd);                                                   close(cmd)
   if(rv){rv=0; action="clip"; argument=1; run()}
   return ""
 }
 # -----------------------------------------------------------------------------
 function clip(  cmd) {
-  if (CRYPTBOARD){cmd=("cat "fpto" | "xclip[3]" -in")}
-  else {cmd=(gpg" -d "fpto" | "xclip[argument]" -in")}
+  if (CRYPTBOARD){cmd=("cat "fpto" | "XCLIP[3]" -in")}
+  else {cmd=(GPG" -d "fpto" | "XCLIP[argument]" -in")}
   rv=system(cmd);                                                   close(cmd)
   return ""
 }
 # -----------------------------------------------------------------------------
 # Need to write tmux function Will be super easy compared to screen
 function screen(  cmd) {
-  if(argument){cmd=(SCREEN" -S "STY" -p "argument" -X stuff \"$("gpg" -d "fpto")\"")}
-  else{cmd=(SCREEN" -S "STY" -X register . \"$("gpg" -d "fpto")\"")}
+  if(argument){cmd=(SCREEN" -S "STY" -p "argument" -X stuff \"$("GPG" -d "fpto")\"")}
+  else{cmd=(SCREEN" -S "STY" -X register . \"$("GPG" -d "fpto")\"")}
   rv=system(cmd);                                                   close(cmd)
   return ""
 }
