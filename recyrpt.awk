@@ -34,7 +34,7 @@ function genWorkArray(  cmd, lines, line) {
     lines=(lines" "line)
   }
   # Append Files to lines
-  cmd=("cd "WALLET_OLD" ;"FIND_BIN" -type f ! -name \"*\.asc\"")
+  cmd=("cd "WALLET_OLD" ;"FIND_BIN" -type f -name \"*\.asc\"")
   while ( (cmd | getline line) > 0) {
     lines=(lines" "line)
   }
