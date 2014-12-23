@@ -6,11 +6,17 @@ PGW - Pretty Good Wallet
 Project Status
 --------------
 
+Just pushed re-write
+Much, much cleaner code
+Much, much cleaner command line sysntax
 
-PGW is currently in a transition stage. PGW has been completely rewritten in Gnu AWK. A URI has been defined to facilitate integration with a planned TCP server. Running PGW as a network accessible server will allow for many more security features to restrict access to the GnuPG Agent socket.
+pgw clip google.com/acnt1/pass
+or
+pgw add google.com/acnt1/pass
+or
+pgw revert a1ad8d6:google.com/acnt1/pass
 
-As a result the following documentation is out of date.
-
+Updateing to this README next on chopping block
 
 Why?
 ----

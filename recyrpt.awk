@@ -4,8 +4,8 @@
 #
 BEGIN {
   # If new key has same UID, i.e. bob@jackson.com, use the new Key's ID here
-  NEW_UID="B79E7681"
-  WALLET_DIR="/home/thomas/.gnupg/wallet"
+  NEW_UID="390236B9"
+  WALLET_DIR="/home/thomas/Downloads/o"
   WALLET_OLD=(WALLET_DIR"/old")
   WALLET_NEW=(WALLET_DIR"/new")
   #
