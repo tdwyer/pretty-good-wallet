@@ -426,10 +426,6 @@ function _gitSync(  cmd,rv) {
       exit
     }
   rv=_gitPush()
-  if (rv)
-    {
-      exit
-    }
   return ""
 }
 

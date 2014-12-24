@@ -85,9 +85,7 @@ User Interface
 --------------
 
 
-This section is work in progress
-You can structure the directory paths in your wallet however you like.
-I like doing it like this.
+If a functionality is not found here, it may very well be available. The beauty of using all standard tool in standard ways is that they work with all the other standard tools. So, if you want to store your GPG key on a *Trusted Platform Module (TPM)* or *SmartCard*, you can do it.
 
 
 Examples
@@ -162,22 +160,23 @@ You can also revert the object back to the point before you fracked it up.
     pgw revert 9163494:google.com/1/p
 
 
-Finding things is also easy. Provided you have some idea of what your looking for. This find function is compatible with egrep regex syntax. Make sure to use single quotes around a regex though.
+Finding things is also easy, provided you have some idea of what your looking for. This find function is compatible with egrep regex syntax. Make sure to use single quotes around a regex.
 
 
     pgw find
     pgw find goo
     pgw find google.com
     pgw find '^g'
+    pgw find '\\.net'
 
 
-You only need these command in fringe cases, because every time you make a change Pretty Good Wallet (pgw) will git-add,git-pull,git-commit,git-push. However, if you made a change while your computer could not contact the remote repository you should manually update the wallet.
+You only need these command in fringe cases, because every time you make a change Pretty Good Wallet (pgw) will git-add,git-pull,git-commit,git-push. However, if you made a change while your computer could not contact to the remote repository you should manually update the wallet.
 
 
     pgw update
 
 
-Maybe somehow some junk is in your wallet. This should not happen, because Pretty Good Wallet (pgw) should have caught the error and cleaned up itself. However, if it dose happen, you can just run the clean manually.
+Maybe somehow some junk is in your wallet. This should not happen, because Pretty Good Wallet (pgw) should have caught the error and cleaned itself up. However, if it dose happen, you can just run the clean manually.
 
 
     pgw clean
@@ -185,9 +184,6 @@ Maybe somehow some junk is in your wallet. This should not happen, because Prett
 
 Confidentiality, Integrity, and Availability (CIA)
 --------------------------------------------------
-
-
-If a functionality is not found here, it may very well be available. The beauty of using all standard tool in standard ways is that they work with all the other standard tools. So, if you want to store your GPG key on a *Trusted Platform Module (TPM)* or *SmartCard*, you can do it.
 
 
 **Confidentiality**
