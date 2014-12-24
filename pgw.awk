@@ -1,16 +1,33 @@
 #!/usr/bin/awk -f
 #
-# BEGIN
-#   Setup Environment
-#   Set global vars
-# 
-# _functions
-#   Only run system commands here as a last resort
-#   Try to only return exit status or system command as a string
+###############################################################################
+#                                                                             #
+# Copyright (c) 2014 Thomas Dwyer. All rights reserved.                       #
+#                                                                             #
+# Redistribution and use in source and binary forms, with or without          #
+# modification, are permitted provided that the following conditions          #
+# are met:                                                                    #
+# 1. Redistributions of source code must retain the above copyright           #
+#    notice, this list of conditions and the following disclaimer.            #
+# 2. Redistributions in binary form must reproduce the above copyright        #
+#    notice, this list of conditions and the following disclaimer in the      #
+#    documentation and/or other materials provided with the distribution.     #
+#                                                                             #
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR        #
+# IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES   #
+# OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.     #
+# IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,            #
+# INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT    #
+# NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,   #
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY       #
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT         #
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF    #
+# THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.           #
+#                                                                             #
+###############################################################################
 #
-# END
-#   Print any final messages
-#   Execute system commands
+# All my computers run OpenBSD
+# However, I bend over backwards to make it as OS agnostic as possible.
 #
 #
 BEGIN {
@@ -39,11 +56,11 @@ BEGIN {
   HOSTNAME_BIN="/bin/hostname"
   MKDIR_BIN="/bin/mkdir"
   PISH_BIN="/usr/site/bin/pish"
+  RM_BIN="/bin/rm"
   SHA256_BIN="/bin/sha256"
   XCLIP_BIN="/usr/local/bin/xclip"
   XDO_BIN="/usr/local/bin/xdotool"
   # Composite commands
-  OBJ=(SELECTION"/"WALLET)
   GIT=(GIT_BIN" -C "WALLET" ")
   GPG=(GPG_BIN" --yes --batch --quiet")
   XCLIP=(XCLIP_BIN" -selection clipboard")
@@ -52,15 +69,15 @@ BEGIN {
     {
       ARGV1="help"
     }
-  else if ( ARGV1 == "revert" )
+  else if (index(ARGV2,":"))
     {
-      split(ARGV2,REVERT_ARGV2,":")
-      COMMIT=REVERT_ARGV2
-      OBJ=(WALLET"/"REVERT_ARGV2".gpg")
+      split(ARGV2,COMMIT_ARGV2,":")
+      COMMIT=COMMIT_ARGV2[1]
+      OBJ=(COMMIT_ARGV2[2]".gpg")
     }
   else
     {
-      OBJ=(WALLET"/"ARGV2".gpg")
+      OBJ=(ARGV2".gpg")
     }
   #
   # Clear the ARGVs so AWK dose not think they are files it should read
@@ -70,7 +87,20 @@ BEGIN {
   _main()
 }
 
-function _main() {
+function _main(  cmd,rv) {
+  #
+  # If a commit is specified
+  # Revert file to that commit before doing anything
+  #
+  if (length(COMMIT) )
+    {
+      cmd=_gitRevert()
+      rv=system(cmd); close(cmd)
+    }
+
+  #
+  # if else is cleaner and more reliable then switch case
+  #
   if ( ARGV1 == "help" )
     {
       _help()
@@ -86,6 +116,10 @@ function _main() {
   else if ( ARGV1 == "log" )
     {
       CMD=_gitLog()
+    }
+  else if ( ARGV1 == "clean" )
+    {
+      CMD=_gitClean()
     }
   else if ( _validate() )
     {
@@ -105,7 +139,21 @@ function _main() {
     }
   else if ( ARGV1 == "revert" )
     {
-      CMD=_gitRevert()
+      CMD=_gitSync()
+    }
+  
+  #
+  # If a commit is specified and not reverting
+  # Reset HEAD
+  # Sure could check for things like: pgw add aoisur3:domain.com/1/u
+  # However I have found then when you try to account for every crazy thing
+  # a user can type in. The code end up being crazy as shit and therefor
+  # unstable
+  #
+  if (length(COMMIT) )
+    {
+      cmd=_gitClean()
+      rv=system(cmd); close(cmd)
     }
   exit
 }
@@ -132,7 +180,7 @@ function _validate(  cmd,rv) {
   #
   # Check if the file exists
   #
-  cmd=(GREP_BIN" -sq '' "OBJ)
+  cmd=(GREP_BIN" -sq '' "WALLET"/"OBJ)
   rv=system(cmd); close(cmd)
   return rv
 }
@@ -141,7 +189,7 @@ function _search(  cmd) {
   #
   # List all files tracked by Git in the wallet
   #
-  cmd=(GIT" ls-files -- |grep -E \""RAW"\" ")
+  cmd=(GIT" ls-files -- |grep -E \""OBJ"\" ")
   printf "%s%s%s", "\n", WALLET, "\n"
   while ( (cmd | getline _line) > 0)
     {
@@ -156,7 +204,7 @@ function _clip(  cmd) {
   # Stuff the plaintext of file into X11 Clipboard selection
   # Spawn sleeper to clear X11 Clipboard selection after 30 seconds
   #
-  cmd=("echo -n \"$("GPG" -d "OBJ" )\" |"XCLIP" -i")
+  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
   cmd=(cmd" ;sleep 30 && echo -n '' |"XCLIP" -i  & ")
   return cmd
 }
@@ -165,7 +213,7 @@ function _crypt(  cmd) {
   #
   # Stuff the ciphertext of file into X11 Clipboard selection
   #
-  cmd=("cat "WALLET"/"RAW".gpg |"XCLIP" -i")
+  cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
   return cmd
 }
 
@@ -182,8 +230,8 @@ function _auto(  cmd,xwindow) {
     }; close(cmd)
 
   cmd=(XDO_BIN" windowraise "xwindow)
-  cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "OBJ")\"")
-  cmd=(cmd" ;"XDO_BIN" key --window "xwindow" Return")
+  cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
+  #cmd=(cmd" ;"XDO_BIN" key --window "xwindow" Return")
   return cmd
 }
 
@@ -214,7 +262,7 @@ function _add(  cmd,hashOne,hashTwo) {
   #
   # Encrypt pinentry stdout to file
   #
-  cmd=("echo -n "line" |"GPG" -a --default-recipient-self -o "OBJ" -e ")
+  cmd=("echo -n "line" |"GPG" -a --default-recipient-self -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv)
     {
@@ -226,7 +274,7 @@ function _add(  cmd,hashOne,hashTwo) {
   #
   # Get sha256 hash of the plaintext version of newly saved file
   #
-  cmd=(GPG" -d "OBJ" | "SHA256_BIN)
+  cmd=(GPG" -d "WALLET"/"OBJ" | "SHA256_BIN)
   cmd | getline hashOne; close(cmd)
   if (ERRNO)
     {
@@ -276,7 +324,7 @@ function _makeDirs(  cmd,parts,dirs,i,rv) {
     {
       dirs=(dirs"/"parts[i])
     }
-  cmd=(MKDIR_BIN" -p "dirs)
+  cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
   rv=system(cmd); close(cmd)
   return rv
 }
@@ -285,7 +333,7 @@ function _gitLog(  cmd) {
   #
   # Show git log
   #
-  cmd=(GIT" log --oneline ")
+  cmd=(GIT" --no-pager log --oneline ")
   return cmd
 }
 
@@ -346,7 +394,7 @@ function _gitPull(  cmd) {
   #
   # Pull in all changes from remote to local
   #
-  cmd=(GIT" pull origin master")
+  cmd=(GIT" push origin master ")
   return cmd
 }
 
@@ -377,18 +425,15 @@ function _gitRevert(  cmd,rv) {
   #
   # Revert local file to COMMIT
   #
-  cmd=(GIT" show "COMMIT":"OBJ" > "OBJ)
+  cmd=(GIT" show "COMMIT":"OBJ" > "WALLET"/"OBJ)
   rv=system(cmd); close(cmd)
   if (rv)
     {
       MESSAGE="Failed to revert"
       cmd=_gitClean()
+      rv=system(cmd); close(cmd)
     }
-  else
-    {
-      cmd=""
-    }
-  return cmd
+  return rv
 }
 
 function _gitClean(  cmd,line,i,untracked) {
@@ -404,17 +449,17 @@ function _gitClean(  cmd,line,i,untracked) {
     {
       if (line ~ "^??")
         {
-          sub(/"?? "/,"",line)
+          sub("\\?\\? ","",line)
           if (length(line) != 0)
             {
               untracked[i++] = line
               if (cmd_)
                 {
-                  cmd_=(cmd_" ;"RM_BIN" -rf "WALLET"/"file)
+                  cmd_=(cmd_" ;"RM_BIN" -rf "WALLET"/"line)
                 }
               else
                 {
-                  cmd_=(RM_BIN" -rf "WALLET"/"file)
+                  cmd_=(RM_BIN" -rf "WALLET"/"line)
                 }
             }
         }
@@ -423,7 +468,14 @@ function _gitClean(  cmd,line,i,untracked) {
   #
   # Reset HEAD
   #
-  cmd=(cmd_" ;"GIT" checkout -- . ")
+  if (cmd_)
+    {
+      cmd=(cmd_" ;"GIT" checkout -- . ")
+    }
+  else
+    {
+      cmd=(GIT" checkout -- . ")
+    }
   return cmd
 }
 
@@ -432,6 +484,7 @@ END {
   # Run system commands
   # Print messages
   #
+  print CMD
   if (length(CMD))
     {
       rv=system(CMD); close(CMD)
