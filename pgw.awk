@@ -144,6 +144,10 @@ function _main(  cmd,rv) {
     {
       _gitSync()
     }
+  else if ( ARGV1 == "remove" )
+    {
+      _gitRm()
+    }
   
   #
   # If a commit is specified and not reverting
@@ -285,24 +289,21 @@ function _add(  cmd,rv,hashOne,hashTwo) {
 
   #
   # Get string with pinentry
-  #
-  cmd=(PISH_BIN)
-  cmd | getline line; close(cmd)
-  if (ERRNO)
-    {
-      MESSAGE=(MESSAGE"Pinentry failled")
-      rv=_gitClean()
-      exit
-    }
-
-  #
   # Encrypt pinentry stdout to file
+  # 
+  # Cant catch the exit status of pinentry reliably
+  # because I know of now universal way to check PIPESTATUS in ALL shells
+  # In Bash you can check $PIPESTATUS[1]
+  # However AWK will run system commands in whatever is the users default shell
   #
-  cmd=("echo -n "line" |"GPG" -a --default-recipient-self -o "WALLET"/"OBJ" -e ")
+  # BUT as long as the user Cancels the second pinentry prompt or
+  # enters different plaintext no changes will be committed
+  #
+  cmd=(PISH_BIN" |"GPG" -a --default-recipient-self -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv)
     {
-      MESSAGE=(MESSAGE"Failed to add")
+      MESSAGE=(MESSAGE"Failed encrypt file")
       rv=_gitClean()
       exit
     }
@@ -373,7 +374,7 @@ function _gitLog(  cmd,rv) {
   #
   # Show git log
   #
-  cmd=(GIT" --no-pager log --oneline ")
+  cmd=(GIT" --no-pager log --oneline --reverse ")
   rv=system(cmd); close(cmd)
   if (rv)
     {
@@ -398,20 +399,6 @@ function _gitSync(  cmd,rv) {
       exit
     }
   rv=_gitPull()
-  if (rv)
-    {
-      rv=_gitClean()
-      MESSAGE=(MESSAGE"\n Perhaps the repo is not commited")
-      MESSAGE=(MESSAGE"\n Start the wallet like this until I put in checks")
-      MESSAGE=(MESSAGE"\n git clone user@server.com:wallet wallet")
-      MESSAGE=(MESSAGE"\n touch init")
-      MESSAGE=(MESSAGE"\n git add init")
-      MESSAGE=(MESSAGE"\n git commit -m 'init step one'")
-      MESSAGE=(MESSAGE"\n git rm init")
-      MESSAGE=(MESSAGE"\n git commit -m 'init step two'")
-      MESSAGE=(MESSAGE"\n git push origin master")
-      exit
-    }
   rv=_gitCommit()
   if (rv)
     {
@@ -494,6 +481,20 @@ function _gitPush(  cmd,rv) {
   return rv
 }
 
+function _gitRm(  cmd,rv) {
+  #
+  # Push committed changes from local to remote
+  #
+  cmd=(GIT" rm "OBJ)
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to remove file")
+    }
+  _gitSync()
+  return rv
+}
+
 function _gitRevert(  cmd,rv) {
   #
   # Revert local file to COMMIT
@@ -508,7 +509,7 @@ function _gitRevert(  cmd,rv) {
   return rv
 }
 
-function _gitClean(  cmd,rv,line,i,untracked) {
+function _gitClean(  cmd,rv,line,i,untracked,testString) {
   #
   # Clean local repository
   #
@@ -519,15 +520,15 @@ function _gitClean(  cmd,rv,line,i,untracked) {
   cmd=(GIT" status --porcelain")
   while ( (cmd | getline line) > 0 )
     {
-      if (line ~ "^??")
+      if (match(line,"^\\?\\? ") )
         {
           sub("\\?\\? ","",line)
-          if (length(line) != 0)
+          if (length(line) )
             {
               untracked[i++] = line
               if (cmd_)
                 {
-                  cmd_=(cmd_" ;"RM_BIN" -rf "WALLET"/"line)
+                  cmd_=(cmd_" ;"RM_BIN" -ri "WALLET"/"line)
                 }
               else
                 {
