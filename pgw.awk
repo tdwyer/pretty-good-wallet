@@ -94,52 +94,55 @@ function _main(  cmd,rv) {
   #
   if (length(COMMIT) )
     {
-      cmd=_gitRevert()
-      rv=system(cmd); close(cmd)
+      rv=_gitRevert()
     }
 
   #
   # if else is cleaner and more reliable then switch case
   #
-  if ( ARGV1 == "help" )
+  if ( ARGV1 == "add" )
     {
-      _help()
-    }
-  else if ( ARGV1 == "update" )
-    {
-      CMD=_gitSync()
-    }
-  else if ( ARGV1 == "add" )
-    {
-      CMD=_add()
-    }
-  else if ( ARGV1 == "log" )
-    {
-      CMD=_gitLog()
+      _add()
     }
   else if ( ARGV1 == "clean" )
     {
-      CMD=_gitClean()
+      rv=_gitClean()
+    }
+  else if ( ARGV1 == "find" )
+    {
+      _search()
+    }
+  else if ( ARGV1 == "help" )
+    {
+      _help()
+    }
+  else if ( ARGV1 == "log" )
+    {
+      rv=_gitLog()
+    }
+  else if ( ARGV1 == "update" )
+    {
+      _gitSync()
     }
   else if ( _validate() )
     {
       _search()
     }
-  else if ( ARGV1 == "crypt" )
+  else if ( ARGV1 == "auto" )
     {
-      CMD=_crypt()
+      _auto()
     }
   else if ( ARGV1 == "clip" )
     {
-      CMD=_clip()
+      _clip()
     }
-  else if ( ARGV1 == "auto" )
+  else if ( ARGV1 == "crypt" )
     {
-      CMD=_auto()
+      _crypt()
     }
   else if ( ARGV1 == "revert" )
     {
-      CMD=_gitSync()
+      _gitSync()
     }
   
   #
@@ -152,8 +155,7 @@ function _main(  cmd,rv) {
   #
   if (length(COMMIT) )
     {
-      cmd=_gitClean()
-      rv=system(cmd); close(cmd)
+      rv=_gitClean()
     }
   exit
 }
@@ -162,7 +164,7 @@ function _help( usage) {
   #
   # Print the help message
   #
-  usage=("Usage: pgw (help|update|add|crypt|clip|auto) domain.com/1/pass")
+  usage=("Usage: pgw (help|update|list|find|add|crypt|clip|auto) domain.com/1/pass")
   _message(usage)
   return ""
 }
@@ -179,45 +181,70 @@ function _message(msg) {
 function _validate(  cmd,rv) {
   #
   # Check if the file exists
+  # Return > 0 if file not found
   #
   cmd=(GREP_BIN" -sq '' "WALLET"/"OBJ)
   rv=system(cmd); close(cmd)
   return rv
 }
 
-function _search(  cmd) {
+function _search(  cmd,line) {
   #
   # List all files tracked by Git in the wallet
+  # If ARGV2; match it using egrep style regex
   #
-  cmd=(GIT" ls-files -- |grep -E \""OBJ"\" ")
-  printf "%s%s%s", "\n", WALLET, "\n"
-  while ( (cmd | getline _line) > 0)
+  sub(/(.gpg)$/,"",OBJ)
+  if (length(OBJ) )
     {
-      gsub(/(.gpg)$/,"",_line)
-      printf "%s%s%s", "    ", _line, "\n"
+      cmd=(GIT" ls-files -- |grep -E "OBJ" ")
     }
+  else
+    {
+      cmd=(GIT" ls-files -- ")
+    }
+
+  #
+  # Print the wallet location
+  # Print found files
+  #
+  printf "%s%s%s", "\n", WALLET, "\n"
+  while ( (cmd | getline line) > 0)
+    {
+      gsub(/(.gpg)$/,"",line)
+      printf "%s%s%s", "    ", line, "\n"
+    }; close(cmd)
   return ""
 }
 
-function _clip(  cmd) {
+function _clip(  cmd,rv) {
   #
   # Stuff the plaintext of file into X11 Clipboard selection
   # Spawn sleeper to clear X11 Clipboard selection after 30 seconds
   #
   cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
   cmd=(cmd" ;sleep 30 && echo -n '' |"XCLIP" -i  & ")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to stuff plaintext into X11 Clipboard selection")
+    }
+  return ""
 }
 
-function _crypt(  cmd) {
+function _crypt(  cmd,rv) {
   #
   # Stuff the ciphertext of file into X11 Clipboard selection
   #
   cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to stuff ciphertext into X11 Clipboard selection")
+    }
+  return ""
 }
 
-function _auto(  cmd,xwindow) {
+function _auto(  cmd,rv,xwindow) {
   #
   # Have user select the window to act upon
   # Type the plaintext of the file
@@ -228,14 +255,23 @@ function _auto(  cmd,xwindow) {
     {
       continue
     }; close(cmd)
+  if (ERRNO)
+    {
+      MESSAGE=(MESSAGE"Failed to get X11 Window selection")
+      exit
+    }
 
   cmd=(XDO_BIN" windowraise "xwindow)
   cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
-  #cmd=(cmd" ;"XDO_BIN" key --window "xwindow" Return")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to autotype plaintext")
+    }
+  return ""
 }
 
-function _add(  cmd,hashOne,hashTwo) {
+function _add(  cmd,rv,hashOne,hashTwo) {
   #
   # Use pinentry via pish wrapper script
   # Encrypt string to file and have user verify
@@ -243,7 +279,7 @@ function _add(  cmd,hashOne,hashTwo) {
 
   if (_makeDirs())
     {
-      MESSAGE="Failed to make directory path to add new file"
+      MESSAGE=(MESSAGE"Failed to make directory path to add new file")
       exit
     }
 
@@ -254,8 +290,8 @@ function _add(  cmd,hashOne,hashTwo) {
   cmd | getline line; close(cmd)
   if (ERRNO)
     {
-      MESSAGE="Pinentry failled"
-      cmd=_gitClean()
+      MESSAGE=(MESSAGE"Pinentry failled")
+      rv=_gitClean()
       exit
     }
 
@@ -266,8 +302,8 @@ function _add(  cmd,hashOne,hashTwo) {
   rv=system(cmd); close(cmd)
   if (rv)
     {
-      MESSAGE="Failed to add"
-      cmd=_gitClean()
+      MESSAGE=(MESSAGE"Failed to add")
+      rv=_gitClean()
       exit
     }
 
@@ -278,8 +314,8 @@ function _add(  cmd,hashOne,hashTwo) {
   cmd | getline hashOne; close(cmd)
   if (ERRNO)
     {
-      MESSAGE="Failed to get sha256 hash of newly added file"
-      cmd=_gitClean()
+      MESSAGE=(MESSAGE"Failed to get sha256 hash of newly added file")
+      rv=_gitClean()
       exit
     }
 
@@ -290,8 +326,8 @@ function _add(  cmd,hashOne,hashTwo) {
   cmd | getline hashTwo; close(cmd)
   if (ERRNO)
     {
-      MESSAGE="Pinentry failled when validating newly added file"
-      cmd=_gitClean()
+      MESSAGE=(MESSAGE"Pinentry failled when validating newly added file")
+      rv=_gitClean()
       exit
     }
 
@@ -302,19 +338,19 @@ function _add(  cmd,hashOne,hashTwo) {
   # Else
   # _gitSync()
   #
-  if (hashOne != hashTwo)
+  if (hashOne == hashTwo)
     {
-      cmd=_gitClean()
+      _gitSync()
     }
   else
     {
-      cmd=_gitSync()
+      rv=_gitClean()
     }
 
-  return cmd
+  return ""
 }
 
-function _makeDirs(  cmd,parts,dirs,i,rv) {
+function _makeDirs(  cmd,rv,parts,dirs,i) {
   #
   # Create directory path for new file
   #
@@ -326,99 +362,136 @@ function _makeDirs(  cmd,parts,dirs,i,rv) {
     }
   cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
   rv=system(cmd); close(cmd)
-  return rv
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to create directory path for new file")
+    }
+  return ""
 }
 
-function _gitLog(  cmd) {
+function _gitLog(  cmd,rv) {
   #
   # Show git log
   #
   cmd=(GIT" --no-pager log --oneline ")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to list the git log")
+    }
+  return ""
 }
 
-function _gitSync(  cmd) {
+function _gitSync(  cmd,rv) {
   #
   # Sync local Git repository with remote 'correctly'
-  #
-  # Unlike that shitty ZX2C4 pass
-  # http://www.passwordstore.org/
-  # or its shitty android version zeapo Android-Password-Store
-  # https://github.com/zeapo/Android-Password-Store
   #
   # git add --all
   # git pull origin master
   # git commit "useful message"
   # git push origin master
   #
-  cmd=_gitAdd()
-  rv=system(cmd); close(cmd)
+  rv=_gitAdd()
   if (rv)
     {
-      MESSAGE="Git add failed"
+      rv=_gitClean()
       exit
     }
-  cmd=_gitPull()
-  rv=system(cmd); close(cmd)
+  rv=_gitPull()
   if (rv)
     {
-      MESSAGE="Git pull failed"
+      rv=_gitClean()
+      MESSAGE=(MESSAGE"\n Perhaps the repo is not commited")
+      MESSAGE=(MESSAGE"\n Start the wallet like this until I put in checks")
+      MESSAGE=(MESSAGE"\n git clone user@server.com:wallet wallet")
+      MESSAGE=(MESSAGE"\n touch init")
+      MESSAGE=(MESSAGE"\n git add init")
+      MESSAGE=(MESSAGE"\n git commit -m 'init step one'")
+      MESSAGE=(MESSAGE"\n git rm init")
+      MESSAGE=(MESSAGE"\n git commit -m 'init step two'")
+      MESSAGE=(MESSAGE"\n git push origin master")
       exit
     }
-  cmd=_gitCommit()
-  rv=system(cmd); close(cmd)
+  rv=_gitCommit()
   if (rv)
     {
-      MESSAGE="Git commit failed"
+      rv=_gitClean()
       exit
     }
-  cmd=_gitPush()
-  rv=system(cmd); close(cmd)
+  rv=_gitPush()
   if (rv)
     {
-      MESSAGE="Git push failed"
       exit
     }
-  return cmd
+  return ""
 }
 
-function _gitAdd(  cmd) {
+function _gitAdd(  cmd,rv) {
   #
   # Add all changes to HEAD
   #
   cmd=(GIT" add --all")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to add changes to git repository")
+    }
+  return rv
 }
 
-function _gitPull(  cmd) {
+function _gitPull(  cmd,rv) {
   #
   # Pull in all changes from remote to local
   #
   cmd=(GIT" push origin master ")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to pull origin master")
+    }
+  return rv
 }
 
-function _gitCommit(  cmd,hostname) {
+function _gitCommit(  cmd,rv,hostname) {
   #
   # Commit all changes to local
   #
+  sub(/(.gpg)$/,"",OBJ)
   cmd=(HOSTNAME_BIN)
   cmd | getline hostname; close(cmd)
   if (ERRNO)
     {
-      MESSAGE="Failed to get hostname"
+      MESSAGE=(MESSAGE"Failed to get hostname")
     }
   cmd=(GIT" commit -m")
-  cmd=(cmd" \""OBJ" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
-  return cmd
+  if (length(COMMIT) )
+    {
+      cmd=(cmd" \""COMMIT":"OBJ)
+    }
+  else
+    {
+      cmd=(cmd" \""OBJ)
+    }
+  cmd=(cmd" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to commit changes to git repository")
+    }
+  return rv
 }
 
-function _gitPush(  cmd) {
+function _gitPush(  cmd,rv) {
   #
   # Push committed changes from local to remote
   #
   cmd=(GIT" push origin master")
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to push origin master")
+    }
+  return rv
 }
 
 function _gitRevert(  cmd,rv) {
@@ -429,14 +502,13 @@ function _gitRevert(  cmd,rv) {
   rv=system(cmd); close(cmd)
   if (rv)
     {
-      MESSAGE="Failed to revert"
-      cmd=_gitClean()
-      rv=system(cmd); close(cmd)
+      MESSAGE=(MESSAGE"Failed to revert")
+      rv=_gitClean()
     }
   return rv
 }
 
-function _gitClean(  cmd,line,i,untracked) {
+function _gitClean(  cmd,rv,line,i,untracked) {
   #
   # Clean local repository
   #
@@ -464,6 +536,10 @@ function _gitClean(  cmd,line,i,untracked) {
             }
         }
     }; close(cmd)
+  if (ERRNO)
+    {
+      MESSAGE=(MESSAGE"Failed to git status --porcelain ")
+    }
 
   #
   # Reset HEAD
@@ -476,7 +552,12 @@ function _gitClean(  cmd,line,i,untracked) {
     {
       cmd=(GIT" checkout -- . ")
     }
-  return cmd
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to clean git repository")
+    }
+  return rv
 }
 
 END {
@@ -484,14 +565,8 @@ END {
   # Run system commands
   # Print messages
   #
-  print CMD
-  if (length(CMD))
-    {
-      rv=system(CMD); close(CMD)
-    }
   if (length(MESSAGE))
     {
       _message(MESSAGE)
     }
-  exit rv
 }
