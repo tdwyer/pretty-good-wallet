@@ -33,6 +33,8 @@ Stable Testing on:
 * OpenBSD 5.5 -stable
 * OpenBSD 5.6 -current
 
+However, should work with anything that has a system shell, Git, GnuPG, xclip, and xdotool
+
 
 Interoperability with Other Managers and Programs
 -------------------------------------------------
