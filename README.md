@@ -29,11 +29,26 @@ Project Status
 --------------
 
 
-Stable Testing on:
+Stable
+
+After changing the binary paths at the top of the script, it should run on anything.
+
+Testing on:
 * OpenBSD 5.5 -stable
 * OpenBSD 5.6 -current
 
-However, should work with anything that has a system shell, Git, GnuPG, xclip, and xdotool
+
+Dependencies
+------------
+
+
+* [AWK](http://www.openbsd.org/cgi-bin/man.cgi?query=awk&sektion=1 "AWK")
+* [pish: pinentry wrapper script writting in OpenBSD's ksh](https://github.com/tdwyer/pish "pish: pinentry wrapper script writting in OpenBSD's ksh")
+* [GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
+* [Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
+* [OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
+* [xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
+* [xdotool: Command-line X11 automation tool](http://www.semicomplete.com/projects/xdotool/ "xdotool: Command-line X11 automation tool")
 
 
 Interoperability with Other Managers and Programs
