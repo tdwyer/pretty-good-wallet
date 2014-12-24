@@ -34,6 +34,9 @@ BEGIN {
   #
   # Set all global vars
   #
+  # Time in seconds until X11 Clipboard selection is cleared
+  CLIPBOARD_TIMEOUT=30
+  #
   ARGV1=ARGV[1]
   ARGV2=ARGV[2]
   # ENV
@@ -148,6 +151,10 @@ function _main(  cmd,rv) {
     {
       _gitRm()
     }
+  else if ( ARGV1 == "stdout" )
+    {
+      _stdout()
+    }
   
   #
   # If a commit is specified and not reverting
@@ -220,13 +227,26 @@ function _search(  cmd,line) {
   return ""
 }
 
+function _stdout(  cmd,rv) {
+  #
+  # Allow GnuPG send plaintext to stdout
+  #
+  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed allow GnuPG to send plaintext to stdout")
+    }
+  return ""
+}
+
 function _clip(  cmd,rv) {
   #
   # Stuff the plaintext of file into X11 Clipboard selection
-  # Spawn sleeper to clear X11 Clipboard selection after 30 seconds
+  # Spawn sleeper to clear X11 Clipboard selection after CLIPBOARD_TIMEOUT sec
   #
   cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
-  cmd=(cmd" ;sleep 30 && echo -n '' |"XCLIP" -i  & ")
+  cmd=(cmd" ;sleep "CLIPBOARD_TIMEOUT" && echo -n '' |"XCLIP" -i  & ")
   rv=system(cmd); close(cmd)
   if (rv)
     {

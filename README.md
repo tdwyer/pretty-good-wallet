@@ -3,21 +3,6 @@ PGW - Pretty Good Wallet
 *A password manager you can work with*
 
 
-Project Status
---------------
-
-Just pushed re-write
-Much, much cleaner code
-Much, much cleaner command line sysntax
-
-pgw clip google.com/acnt1/pass
-or
-pgw add google.com/acnt1/pass
-or
-pgw revert a1ad8d6:google.com/acnt1/pass
-
-Updateing to this README next on chopping block
-
 Why?
 ----
 
@@ -37,7 +22,6 @@ The projects used by PGW include:
 * [GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
 * [Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
 * [OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
-* [kppy Python API  to KeePass 1.x files](http://raymontag.github.io/kppy "kppy Python API  to KeePass 1.x files")
 * [xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
 
 
@@ -45,55 +29,26 @@ Project Status
 --------------
 
 
-PGW is currently fully usable from the command line and as a Python Keyring backend. There is more work to be done, but at it's current stage PGW provides many useful features which make it a solution to consider.
-
-
-PGW Wallet Structure
---------------------
-
-
-* **Wallet**
-  The wallet is a directory located at $GNUPGHOME/wallet by default. Found in the root of this directory is the file `.KEYID` which contains a space separated list of GPG UID's or key fingerprint to encrypt to. Also found here are directories for each **Domain**.
-
-
-* **Domain**
-  A *Domain* directory contains a **Keyring** directory and a **Vault** directory.
-
-
-* **Keyring**
-Inside a *Keyring* directory is where you will find all of the **Keys** saved for that *Domain*
-
-
-* **Key**
-  In PGW *Keys* are used to store *Clipboardable Strings*, such as *Passwords*, and *Usernames*. If the Username is not confidential, then it is advantages to use your username as the *Key* name and encrypt your password. Doing this improves search ability. However, it is not required, nor are *Keys* limited to password storage.
-
-
-* **Vault**
-  Inside a *Vault* is where you can store encrypted files. There are many more things on a computer which need to be protected and these *Vaults* provide an easy way to do that. Given that each *Domain* has it's own *Vault*, keeping these files organized is made much easier. Encrypted files are also *backed up* to your remote server and *synchronized* across all your computers with Git along with the Keys.
-
-  * NOTE: If you store a file named `url` in the vault it will be imported into KeePass during PGW export-to-keepass.
-  * NOTE: If you store a file named `comment` in the vault it will be imported into KeePass durring PGW export-to-keepass.
-    * NOTE: `export-to-keepass` is not integrated just yet :p, but it is just around the corner
+Stable Testing on:
+* OpenBSD 5.5 -stable
+* OpenBSD 5.6 -current
 
 
 Interoperability with Other Managers and Programs
 -------------------------------------------------
 
 
+- **Mutt**
+  - Its super easy to keep your plaintext passwords out of muttrc
 - **Python Keyring**
+  - Removed from the project at the moment: reworking
   - Python 2.7 Keyring backend is available
-- **KeePass KeePassX**
-  - Export PGW to KeePass v1 database is available
-    - Automatic One-Way Sync to a KDBv1 is close to completion
-    - Two-Way Sync is coming
-- **Python 2.7 API**
-  - An Interface class is being developed and currently provides core functionality.
 
 
 ### Mutt Config
 
 
-    set my_pw_example = `pgw -d example.com -k alice -stdout`
+    set my_pw_example = `pgw stdout example.com/password`
     set imap_pass = $my_pw_example
     set smtp_pass = $my_pw_example
     account-hook $folder "set imap_user=$my_username imap_pass=$my_pw_example"
@@ -101,6 +56,7 @@ Interoperability with Other Managers and Programs
 
 ### Python Keyring Config
 
+**Python Keyring backend is currently no in the repo**
 
 Enable Python Keyring for your user by adding the following to
 `$HOME/.local/share/python_keyring/keyringrc.cfg`
@@ -127,93 +83,102 @@ User Interface
 --------------
 
 
-The user interface is command line based. With it you can encrypt keys and files. Then you can access them in a few ways, such as send to the **GNU Screen** copy buffer `-screen`, *GNU Screen* window `-window #`, cursor position `-stdout`, or wire to a file `-stdout file.txt`. The X11 *Clipboard* is also destination and it selected with `-clip 1`, `2`, or `3` where `1` is Primary selection, `2` Secondary, and `3` is the Clipboard.
+This section is work in progress
+You can structure the directory paths in your wallet however you like.
+I like doing it like this.
 
 
-PGW provides a couple options to improve locating items and accessing them.
-
-- **Search the Wallet in Tree View**
-  - The `tree` command is used for Fancy and Readable View of the wallet
-    - If the Tree will not fit in the terminal, `less` is opened automatically
-  - Search Wallet for Files and Keys
-    - Simply add the string your looking for after the `-t`
-    - Limit search to one Domain by adding `-d example.com`
-    - View Only Keys or Files by adding `-k` or `-f`
-    - Combined any, all, or none of these search options
-- **Select from Numbered List**
-  - Don't know exactly what your looking for? Heres a list, Enter the number...
-    - Just type `pgw -screen`
-      - Then enter the number of the item you want sent to the Clipboard.
-    - If you know the Domain you can shorten the list `pgw -screen -d example.com`
-      - Now only options for *example.com* are shown in the list
+Examples
+========
 
 
-### NEW Features
+Create bare repository on your server.
 
 
-* **Auto-Type** with `-auto`
-* **Add Account** in one go with `-accnt`
-  * This option is ideal with `-auto` to log into websites
-* **View Old Revisions** `-version`
-* **Recover Old Revisions** `-revert`
-* **Cryptboard Support** if [Cryptboard](http://github.com/tdwyer/cryptboard "Cryptboard") is installed `-clip` will put *encrypted* messages in the clipboard
-* **Auto-Gen Wallet** the *Wallet* will be created
-  * `pgw.conf` will be created
-  * `git init` will run
-* **Multi-Wallet Support** Simply by creating symbolic links
-  * Have a *Work Wallet* `ln -s /usr/bin/pgw pgw:work`
-  * Now run `pgw:work` to create and use the wallet `$HOME/.gnupg/work`
-* **Per-Wallet Configuration** `wallet/.pgw.conf`
+    ssh user@my.server.com
+    user@my.server.com $ mkdir main
+    user@my.server.com $ cd main
+    user@my.server.com $ git init --bare
+    user@my.server.com $ exit
 
 
-### Examples
+Clone your wallet from your server.
 
 
-**Working with the Keys**
+    git clone user@my.server.com:main $HOME/.gwallet
 
 
-- **Add Keys**
-  - Enter password with the interactive prompt
-    - Enter `pgw -d example.com -accnt main -enc`
-    - Then enter your username and your password with `pinentry`
-  - For url confidentiality use false or abstract *Domain* name
-    - Then save the url as a key *url* which is useful with Auto-Type anyway
-    - `pgw -d website01 -k url -enc`
-  - Enter Password as Parameter
-    - Password can be added as a param or from stdout of other app like `passgen`
-    - `pgw -d website01 -accnt troll -v "$(passgen 48)" -enc`
-
-- **It easy to use Auto-Type**
-  - At example.com login page use Auto-Type to log you in
-    - `pgw -d website01 -accnt main -auto`
-    - Then click back on the web browser
+Add some new stuff. You will be prompted to enter a string with pinentry-curses or pinentry-gtk two times. This is done to verify you have entered the string you think you did, because the string will be 'stared' out. If you mess up. Just make sure to enter a different string the second time your prompted with Pinentry.
 
 
-**Working with the Vault**
+    pgw add google.com/url # url
+    pgw add google.com/1/u # username for first account
+    pgw add google.com/1/p # password for first account
 
 
-- It's easy to **encrypt, sync, backup, and version control** related documents
-  - `pgw -d tax.example.com -v EZ1040-2013.pdf -enc`
-
-- **Geting a file from a vault**
-  - Just redirect `-stdout` to a file name. Like all other Unix commands
-    - `pgw -d tax.examplecom -v EZ1040-2013.pdf -stdout >taxes.pdf`
-  - You could just select from the list and even at the name of the output file
-    - `pgw -stdout taxes.pdf`
+If you end up committing an entry, but don't like the name of the file or directory path. You can remove it.
 
 
-**Working with Version Control**
+    pgw add google.com/111/borked
+    pgw remove google.com/111/borked
 
 
-- **View old Revisions**
-  - You can *view old versions* of keys and files just as easy as the current version
-    - Simply add `-version` to the same commands and select the version to view
+There are a number of ways to receive the plaintext.
 
-- **Recover** old version of keys and files
-    - Works the same as viewing old version except add `-revert` instead
-      - `pgw -stdout ~/taxes.pdf -revert` and select the version you want
-    - You can *always* recover from a recovery the same as any other recovery
-      - Technically, *PGW* will cherry pick the old version and make a *new commit*
+
+    pgw auto google.com/url
+    pgw clip google.com/url
+    pgw stdout google.com/url
+
+
+Pretty Good Wallet (pgw) is also fully compatible with my other project
+[Cryptboard - An Encrypted X11 Clipboard manager](https://github.com/tdwyer/cryptboard "Cryptboard - An Encrypted X11 Clipboard manager")
+With this option the ASCII Armor ciphertext will be stuffed into the X11 Clipbard selection. This is very useful if, say your RDP client is synchronizing your Clipboard.
+
+
+    pgw crypt google.com/1/p
+
+
+You can view the Git log.
+
+
+    pgw log
+
+
+This is useful, because Pretty Good Wallet (pgw) allows you to get the version of any file from any point in time. Perhaps, this feature could be used to provide some obscurity by keeping your real password a few commits back
+
+
+    pgw auto 9163494:google.com/url
+    pgw clip 9163494:google.com/url
+    pgw crypt 9163494:google.com/url
+    pgw stdout 9163494:google.com/url
+
+
+You can also revert the object back to the point before you fracked it up.
+
+
+    pgw revert 9163494:google.com/1/p
+
+
+Finding things is also easy. Provided you have some idea of what your looking for. This find function is compatible with egrep regex syntax. Make sure to use single quotes around a regex though.
+
+
+    pgw find
+    pgw find goo
+    pgw find google.com
+    pgw find '^g'
+
+
+You only need these command in fringe cases, because every time you make a change Pretty Good Wallet (pgw) will git-add,git-pull,git-commit,git-push. However, if you made a change while your computer could not contact the remote repository you should manually update the wallet.
+
+
+    pgw update
+
+
+Maybe somehow some junk is in your wallet. This should not happen, because Pretty Good Wallet (pgw) should have caught the error and cleaned up itself. However, if it dose happen, you can just run the clean manually.
+
+
+    pgw clean
 
 
 Confidentiality, Integrity, and Availability (CIA)
@@ -228,7 +193,7 @@ If a functionality is not found here, it may very well be available. The beauty 
     - OpenSSH provides encrypted access to Git server
   - **Storage**
     - GnuPG can encrypt data with strong ciphers
-      - Supported Symmetrical Ciphers Include: TWOFISH, CAMELLIA256, BLOWFISH, AES256
+      - Supported Symmetrical Ciphers Include: TWOFISH, CAMELLIA256, BLOWFISH
   - **Processing**
     - GnuPG is given the path and name of file to encrypt not the contents
     - Pinentry stdout is piped directly to GnuPG stdin
@@ -249,10 +214,8 @@ If a functionality is not found here, it may very well be available. The beauty 
   - **Transmission**
     - Git Server can be Accessed from HTTP, HTTPS, or OpenSSH
   - **Storage**
-    - GnuPG can encrypt to *multiple keys* in case the main key is lost
     - Git Maintains a Local Repository of the Complete Wallet and all Changes
   - **Processing**
-    - GnuPG *multi-account access* by encrypting to all team members keys
     - Git manages changes submitted by multiple sources
     - Git provides change rollback functionality for *password recovery*
     - GPG-Agent provides *session management*
