@@ -58,7 +58,7 @@ BEGIN {
   GREP_BIN="/usr/bin/grep"
   HOSTNAME_BIN="/bin/hostname"
   MKDIR_BIN="/bin/mkdir"
-  PISH_BIN="/usr/site/bin/pish"
+  PINSH_BIN="/usr/site/bin/pinsh"
   RM_BIN="/bin/rm"
   SHA256_BIN="/bin/sha256"
   XCLIP_BIN="/usr/local/bin/xclip"
@@ -297,9 +297,17 @@ function _auto(  cmd,rv,xwindow) {
 
 function _add(  cmd,rv,hashOne,hashTwo) {
   #
-  # Use pinentry via pish wrapper script
+  # Use pinentry via pinsh wrapper script
   # Encrypt string to file and have user verify
   #
+  cmd=("if [[ ! -x "PINSH_BIN" ]] ;then exit 1 ;else exit 0 ;fi")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Pinentry executable wrapper script 'pinsh' not found")
+      MESSAGE=(MESSAGE"Download from https://github.com/tdwyer/pinsh")
+      exit
+    }
 
   if (_makeDirs() )
     {
@@ -318,7 +326,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   # BUT as long as the user Cancels the second pinentry prompt or
   # enters different plaintext no changes will be committed
   #
-  cmd=(PISH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
+  cmd=(PINSH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv)
     {
@@ -342,7 +350,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   #
   # Have user re-enter string and get the sha256 hash
   #
-  cmd=(PISH_BIN" | "SHA256_BIN)
+  cmd=(PINSH_BIN" | "SHA256_BIN)
   cmd | getline hashTwo; close(cmd)
   if (ERRNO)
     {
