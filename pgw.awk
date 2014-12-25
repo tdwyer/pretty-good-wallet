@@ -72,7 +72,7 @@ BEGIN {
     {
       ARGV1="help"
     }
-  else if (index(ARGV2,":"))
+  else if (index(ARGV2,":") )
     {
       split(ARGV2,COMMIT_ARGV2,":")
       COMMIT=COMMIT_ARGV2[1]
@@ -301,7 +301,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   # Encrypt string to file and have user verify
   #
 
-  if (_makeDirs())
+  if (_makeDirs() )
     {
       MESSAGE=(MESSAGE"Failed to make directory path to add new file")
       exit
@@ -319,7 +319,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   # BUT as long as the user Cancels the second pinentry prompt or
   # enters different plaintext no changes will be committed
   #
-  cmd=(PISH_BIN" |"GPG" -a --default-recipient-self -o "WALLET"/"OBJ" -e ")
+  cmd=(PISH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv)
     {
@@ -579,10 +579,9 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
 
 END {
   #
-  # Run system commands
   # Print messages
   #
-  if (length(MESSAGE))
+  if (length(MESSAGE) )
     {
       _message(MESSAGE)
     }
