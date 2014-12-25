@@ -204,13 +204,13 @@ Known Vulnerabilities and Mitigations
 =====================================
 
 
-  1.
+  1. !
     - Vulnerability: Git directory is no encrypted, so your password changing policy, timeline, is known to the attacker.
     - Mitigation: From time to time, create a tar backup and import all files into new Git repository
-  2.
+  2. !
     - Vulnerability: Plaintext is not padded before encrypting to file, so password length is known to the attacker.
     - Mitigation: Well, kind of the point of a password manager, Use crazy long passwords. Knowing that you have a 128 character password for your example.com account may discourage the attacker.
-  3.
+  3. !
     - Vulnerability: Directory and file names are not encrypted, so the attacker knows all of them.
     - Mitigation: Dont do this `pgw add banking.example.com/1/p` do this `pgw add twitter.example.com/1/p` so sensitive URLs are not known to the attacker. Then make use of a url file like I do `pgw add twitter.example.com/url`
  
