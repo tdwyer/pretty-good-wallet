@@ -329,10 +329,9 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
   #
   cmd=(GIT" status --porcelain")
   while ( (cmd | getline line) > 0 ) {
-    if (match(line,"^\?\? ") ) {
+    if (match(line,"^\\?\\? ") ) {
       sub("\\?\\? ","",line)
       if (length(line) ) {
-        untracked[i++] = line
         if (cmd_) {
           cmd_=(cmd_" ;"RM_BIN" -ri "WALLET"/"line)
         }
