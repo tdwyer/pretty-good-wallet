@@ -68,11 +68,7 @@ BEGIN {
   GPG=(GPG_BIN" --yes --batch --quiet")
   XCLIP=(XCLIP_BIN" -selection clipboard")
   # Relative vars
-  if ( ! length(ARGV1) )
-    {
-      ARGV1="help"
-    }
-  else if (index(ARGV2,":") )
+  if (index(ARGV2,":") )
     {
       split(ARGV2,COMMIT_ARGV2,":")
       COMMIT=COMMIT_ARGV2[1]
@@ -108,9 +104,42 @@ function _main(  cmd,rv) {
     {
       _add()
     }
+  else if ( ARGV1 == "auto" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _auto()
+        }
+    }
   else if ( ARGV1 == "clean" )
     {
       rv=_gitClean()
+    }
+  else if ( ARGV1 == "clip" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _clip()
+        }
+    }
+  else if ( ARGV1 == "crypt" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _crypt()
+        }
     }
   else if ( ARGV1 == "find" )
     {
@@ -124,37 +153,46 @@ function _main(  cmd,rv) {
     {
       rv=_gitLog()
     }
+  else if ( ARGV1 == "remove" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _gitRm()
+        }
+    }
+  else if ( ARGV1 == "revert" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _gitSync()
+        }
+    }
+  else if ( ARGV1 == "stdout" )
+    {
+      if ( _validate() )
+        {
+          _search()
+        }
+      else
+        {
+          _stdout()
+        }
+    }
   else if ( ARGV1 == "update" )
     {
       _gitSync()
     }
-  else if ( _validate() )
+  else
     {
-      _search()
-    }
-  else if ( ARGV1 == "auto" )
-    {
-      _auto()
-    }
-  else if ( ARGV1 == "clip" )
-    {
-      _clip()
-    }
-  else if ( ARGV1 == "crypt" )
-    {
-      _crypt()
-    }
-  else if ( ARGV1 == "revert" )
-    {
-      _gitSync()
-    }
-  else if ( ARGV1 == "remove" )
-    {
-      _gitRm()
-    }
-  else if ( ARGV1 == "stdout" )
-    {
-      _stdout()
+      _help()
     }
   
   #
@@ -169,130 +207,6 @@ function _main(  cmd,rv) {
     {
       rv=_gitClean()
     }
-}
-
-function _help( usage) {
-  #
-  # Print the help message
-  #
-  usage=("Usage: pgw (help|update|list|find|add|crypt|clip|auto) domain.com/1/pass")
-  _message(usage)
-  return ""
-}
-
-function _message(msg) {
-  #
-  # Print the msg string cleanly
-  #
-  printf "%s%s%s",
-         "\n", msg, "\n"
-  return ""
-}
-
-function _validate(  cmd,rv) {
-  #
-  # Check if the file exists
-  # Return > 0 if file not found
-  #
-  cmd=(GREP_BIN" -sq '' "WALLET"/"OBJ)
-  rv=system(cmd); close(cmd)
-  return rv
-}
-
-function _search(  cmd,line) {
-  #
-  # List all files tracked by Git in the wallet
-  # If ARGV2; match it using egrep style regex
-  #
-  sub(/(.gpg)$/,"",OBJ)
-  if (length(OBJ) )
-    {
-      cmd=(GIT" ls-files -- |grep -E "OBJ" ")
-    }
-  else
-    {
-      cmd=(GIT" ls-files -- ")
-    }
-
-  #
-  # Print the wallet location
-  # Print found files
-  #
-  printf "%s%s%s", "\n", WALLET, "\n"
-  while ( (cmd | getline line) > 0)
-    {
-      gsub(/(.gpg)$/,"",line)
-      printf "%s%s%s", "    ", line, "\n"
-    }; close(cmd)
-  return ""
-}
-
-function _stdout(  cmd,rv) {
-  #
-  # Allow GnuPG send plaintext to stdout
-  #
-  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" ")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed allow GnuPG to send plaintext to stdout")
-    }
-  return ""
-}
-
-function _clip(  cmd,rv) {
-  #
-  # Stuff the plaintext of file into X11 Clipboard selection
-  # Spawn sleeper to clear X11 Clipboard selection after CLIPBOARD_TIMEOUT sec
-  #
-  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
-  cmd=(cmd" ;sleep "CLIPBOARD_TIMEOUT" && echo -n '' |"XCLIP" -i  & ")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to stuff plaintext into X11 Clipboard selection")
-    }
-  return ""
-}
-
-function _crypt(  cmd,rv) {
-  #
-  # Stuff the ciphertext of file into X11 Clipboard selection
-  #
-  cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to stuff ciphertext into X11 Clipboard selection")
-    }
-  return ""
-}
-
-function _auto(  cmd,rv,xwindow) {
-  #
-  # Have user select the window to act upon
-  # Type the plaintext of the file
-  # to current cursor position inside selected window
-  #
-  cmd=(XDO_BIN" selectwindow 2>/dev/null")
-  while((cmd | getline xwindow) > 0)
-    {
-      continue
-    }; close(cmd)
-  if (ERRNO)
-    {
-      MESSAGE=(MESSAGE"Failed to get X11 Window selection")
-      exit
-    }
-
-  cmd=(XDO_BIN" windowraise "xwindow)
-  cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to autotype plaintext")
-    }
-  return ""
 }
 
 function _add(  cmd,rv,hashOne,hashTwo) {
@@ -379,70 +293,58 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   return ""
 }
 
-function _makeDirs(  cmd,rv,parts,dirs,i) {
+function _auto(  cmd,rv,xwindow) {
   #
-  # Create directory path for new file
+  # Have user select the window to act upon
+  # Type the plaintext of the file
+  # to current cursor position inside selected window
   #
-  split(OBJ,parts,"/")
-  if (length(parts) < 2)
+  cmd=(XDO_BIN" selectwindow 2>/dev/null")
+  while((cmd | getline xwindow) > 0)
     {
-      MESSAGE=(MESSAGE"Failed to add file to wallet root directory")
-      MESSAGE=(MESSAGE"\nYou must provide at least one subdirectory")
-      rv=1
-    }
-  else
+      continue
+    }; close(cmd)
+  if (ERRNO)
     {
-      dirs=parts[1]
-      for (i=2; i<length(parts); i++)
-        {
-          dirs=(dirs"/"parts[i])
-        }
-      cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
-      rv=system(cmd); close(cmd)
-      if (rv)
-        {
-          MESSAGE=(MESSAGE"Failed to create directory path for new file")
-        }
+      MESSAGE=(MESSAGE"Failed to get X11 Window selection")
+      exit
     }
-  return rv
-}
 
-function _gitLog(  cmd,rv) {
-  #
-  # Show git log
-  #
-  cmd=(GIT" --no-pager log --oneline --reverse ")
+  cmd=(XDO_BIN" windowraise "xwindow)
+  cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
   rv=system(cmd); close(cmd)
   if (rv)
     {
-      MESSAGE=(MESSAGE"Failed to list the git log")
+      MESSAGE=(MESSAGE"Failed to autotype plaintext")
     }
   return ""
 }
 
-function _gitSync(  cmd,rv) {
+function _clip(  cmd,rv) {
   #
-  # Sync local Git repository with remote 'correctly'
+  # Stuff the plaintext of file into X11 Clipboard selection
+  # Spawn sleeper to clear X11 Clipboard selection after CLIPBOARD_TIMEOUT sec
   #
-  # git add --all
-  # git pull origin master
-  # git commit "useful message"
-  # git push origin master
-  #
-  rv=_gitAdd()
+  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
+  cmd=(cmd" ;sleep "CLIPBOARD_TIMEOUT" && echo -n '' |"XCLIP" -i  & ")
+  rv=system(cmd); close(cmd)
   if (rv)
     {
-      rv=_gitClean()
-      exit
+      MESSAGE=(MESSAGE"Failed to stuff plaintext into X11 Clipboard selection")
     }
-  rv=_gitPull()
-  rv=_gitCommit()
+  return ""
+}
+
+function _crypt(  cmd,rv) {
+  #
+  # Stuff the ciphertext of file into X11 Clipboard selection
+  #
+  cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
+  rv=system(cmd); close(cmd)
   if (rv)
     {
-      rv=_gitClean()
-      exit
+      MESSAGE=(MESSAGE"Failed to stuff ciphertext into X11 Clipboard selection")
     }
-  rv=_gitPush()
   return ""
 }
 
@@ -455,89 +357,6 @@ function _gitAdd(  cmd,rv) {
   if (rv)
     {
       MESSAGE=(MESSAGE"Failed to add changes to git repository")
-    }
-  return rv
-}
-
-function _gitPull(  cmd,rv) {
-  #
-  # Pull in all changes from remote to local
-  #
-  cmd=(GIT" push origin master ")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to pull origin master")
-    }
-  return rv
-}
-
-function _gitCommit(  cmd,rv,hostname) {
-  #
-  # Commit all changes to local
-  #
-  sub(/(.gpg)$/,"",OBJ)
-  cmd=(HOSTNAME_BIN)
-  cmd | getline hostname; close(cmd)
-  if (ERRNO)
-    {
-      MESSAGE=(MESSAGE"Failed to get hostname")
-    }
-  cmd=(GIT" commit -m")
-  if (length(COMMIT) )
-    {
-      cmd=(cmd" \""COMMIT":"OBJ)
-    }
-  else
-    {
-      cmd=(cmd" \""OBJ)
-    }
-  cmd=(cmd" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to commit changes to git repository")
-    }
-  return rv
-}
-
-function _gitPush(  cmd,rv) {
-  #
-  # Push committed changes from local to remote
-  #
-  cmd=(GIT" push origin master")
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to push origin master")
-    }
-  return rv
-}
-
-function _gitRm(  cmd,rv) {
-  #
-  # Push committed changes from local to remote
-  #
-  cmd=(GIT" rm "OBJ)
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to remove file")
-    }
-  _gitSync()
-  return rv
-}
-
-function _gitRevert(  cmd,rv) {
-  #
-  # Revert local file to COMMIT
-  #
-  cmd=(GIT" show "COMMIT":"OBJ" > "WALLET"/"OBJ)
-  rv=system(cmd); close(cmd)
-  if (rv)
-    {
-      MESSAGE=(MESSAGE"Failed to revert")
-      rv=_gitClean()
     }
   return rv
 }
@@ -591,6 +410,225 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
     {
       MESSAGE=(MESSAGE"Failed to clean git repository")
     }
+  return rv
+}
+
+function _gitCommit(  cmd,rv,hostname) {
+  #
+  # Commit all changes to local
+  #
+  sub(/(.gpg)$/,"",OBJ)
+  cmd=(HOSTNAME_BIN)
+  cmd | getline hostname; close(cmd)
+  if (ERRNO)
+    {
+      MESSAGE=(MESSAGE"Failed to get hostname")
+    }
+  cmd=(GIT" commit -m")
+  if (length(COMMIT) )
+    {
+      cmd=(cmd" \""COMMIT":"OBJ)
+    }
+  else
+    {
+      cmd=(cmd" \""OBJ)
+    }
+  cmd=(cmd" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to commit changes to git repository")
+    }
+  return rv
+}
+
+function _gitLog(  cmd,rv) {
+  #
+  # Show git log
+  #
+  cmd=(GIT" --no-pager log --oneline --reverse ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to list the git log")
+    }
+  return ""
+}
+
+function _gitPull(  cmd,rv) {
+  #
+  # Pull in all changes from remote to local
+  #
+  cmd=(GIT" push origin master ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to pull origin master")
+    }
+  return rv
+}
+
+function _gitPush(  cmd,rv) {
+  #
+  # Push committed changes from local to remote
+  #
+  cmd=(GIT" push origin master")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to push origin master")
+    }
+  return rv
+}
+
+function _gitRevert(  cmd,rv) {
+  #
+  # Revert local file to COMMIT
+  #
+  cmd=(GIT" show "COMMIT":"OBJ" > "WALLET"/"OBJ)
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to revert")
+      rv=_gitClean()
+    }
+  return rv
+}
+
+function _gitRm(  cmd,rv) {
+  #
+  # Push committed changes from local to remote
+  #
+  cmd=(GIT" rm "OBJ)
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed to remove file")
+    }
+  _gitSync()
+  return rv
+}
+
+function _gitSync(  cmd,rv) {
+  #
+  # Sync local Git repository with remote 'correctly'
+  #
+  # git add --all
+  # git pull origin master
+  # git commit "useful message"
+  # git push origin master
+  #
+  rv=_gitAdd()
+  if (rv)
+    {
+      rv=_gitClean()
+      exit
+    }
+  rv=_gitPull()
+  rv=_gitCommit()
+  if (rv)
+    {
+      rv=_gitClean()
+      exit
+    }
+  rv=_gitPush()
+  return ""
+}
+
+function _help( usage) {
+  #
+  # Print the help message
+  #
+  usage=("Usage: pgw (help|update|list|find|add|crypt|clip|auto) domain.com/1/pass")
+  _message(usage)
+  return ""
+}
+
+function _makeDirs(  cmd,rv,parts,dirs,i) {
+  #
+  # Create directory path for new file
+  #
+  split(OBJ,parts,"/")
+  if (length(parts) < 2)
+    {
+      MESSAGE=(MESSAGE"Failed to add file to wallet root directory")
+      MESSAGE=(MESSAGE"\nYou must provide at least one subdirectory")
+      rv=1
+    }
+  else
+    {
+      dirs=parts[1]
+      for (i=2; i<length(parts); i++)
+        {
+          dirs=(dirs"/"parts[i])
+        }
+      cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
+      rv=system(cmd); close(cmd)
+      if (rv)
+        {
+          MESSAGE=(MESSAGE"Failed to create directory path for new file")
+        }
+    }
+  return rv
+}
+
+function _message(msg) {
+  #
+  # Print the msg string cleanly
+  #
+  printf "%s%s%s",
+         "\n", msg, "\n"
+  return ""
+}
+
+function _search(  cmd,line) {
+  #
+  # List all files tracked by Git in the wallet
+  # If ARGV2; match it using egrep style regex
+  #
+  sub(/(.gpg)$/,"",OBJ)
+  if (length(OBJ) )
+    {
+      cmd=(GIT" ls-files -- |grep -E "OBJ" ")
+    }
+  else
+    {
+      cmd=(GIT" ls-files -- ")
+    }
+
+  #
+  # Print the wallet location
+  # Print found files
+  #
+  printf "%s%s%s", "\n", WALLET, "\n"
+  while ( (cmd | getline line) > 0)
+    {
+      gsub(/(.gpg)$/,"",line)
+      printf "%s%s%s", "    ", line, "\n"
+    }; close(cmd)
+  return ""
+}
+
+function _stdout(  cmd,rv) {
+  #
+  # Allow GnuPG send plaintext to stdout
+  #
+  cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" ")
+  rv=system(cmd); close(cmd)
+  if (rv)
+    {
+      MESSAGE=(MESSAGE"Failed allow GnuPG to send plaintext to stdout")
+    }
+  return ""
+}
+
+function _validate(  cmd,rv) {
+  #
+  # Check if the file exists
+  # Return > 0 if file not found
+  #
+  cmd=(GREP_BIN" -sq '' "WALLET"/"OBJ)
+  rv=system(cmd); close(cmd)
   return rv
 }
 
