@@ -20,11 +20,11 @@ Essentially, PGW ties together commonly trusted software projects into a Passwor
 The projects used by PGW include:
 
 * [GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
-* [pinentry](https://www.gnupg.org/related_software/pinentry/index.en.html "pinentry")
+* [pinentry: Dialog program to read passphrase in a secure manner](https://www.gnupg.org/related_software/pinentry/index.en.html "pinentry")
 * [pinsh: pinentry wrapper script writting in /bin/sh](https://github.com/tdwyer/pinsh "pinsh: pinentry wrapper script writting in /bin/sh")
 * [Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
 * [OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
-* [xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
+* [xclip: commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
 
 
 Project Status
@@ -46,11 +46,11 @@ Dependencies
 
 * [AWK](http://www.openbsd.org/cgi-bin/man.cgi?query=awk&sektion=1 "AWK")
 * [pinsh: pinentry wrapper script writting in /bin/sh](https://github.com/tdwyer/pinsh "pinsh: pinentry wrapper script writting in /bin/sh")
-* [pinentry](https://www.gnupg.org/related_software/pinentry/index.en.html "pinentry")
+* [pinentry: Dialog program to read passphrase in a secure manner](https://www.gnupg.org/related_software/pinentry/index.en.html "pinentry")
 * [GnuPG The GNU Privacy Guard](https://www.gnupg.org "GnuPG The GNU Privacy Guard")
 * [Git --distributed-is-the-new-centralized](http://git-scm.com "Git --distributed-is-the-new-centralized")
 * [OpenSSH Keeping Your Communiqués Secret](http://www.openssh.com "OpenSSH Keeping Your Communiqués Secret")
-* [xclip commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
+* [xclip: commandline interface to the X11 clipboard](http://sourceforge.net/projects/xclip "xclip commandline interface to the X11 clipboard")
 * [xdotool: Command-line X11 automation tool](http://www.semicomplete.com/projects/xdotool/ "xdotool: Command-line X11 automation tool")
 
 
