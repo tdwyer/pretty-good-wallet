@@ -88,6 +88,7 @@ BEGIN {
   ARGV[1]=""
   ARGV[2]=""
   _main()
+  exit
 }
 
 function _main(  cmd,rv) {
@@ -168,7 +169,6 @@ function _main(  cmd,rv) {
     {
       rv=_gitClean()
     }
-  exit
 }
 
 function _help( usage) {
@@ -303,7 +303,6 @@ function _add(  cmd,rv,hashOne,hashTwo) {
 
   if (_makeDirs() )
     {
-      MESSAGE=(MESSAGE"Failed to make directory path to add new file")
       exit
     }
 
@@ -347,7 +346,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   cmd | getline hashTwo; close(cmd)
   if (ERRNO)
     {
-      MESSAGE=(MESSAGE"Pinentry failled when validating newly added file")
+      MESSAGE=(MESSAGE"Pinentry failled at second prompt for validation")
       rv=_gitClean()
       exit
     }
@@ -365,6 +364,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
     }
   else
     {
+      MESSAGE=(MESSAGE"Pinentry failled when validating: cleaning up")
       rv=_gitClean()
     }
 
@@ -376,18 +376,27 @@ function _makeDirs(  cmd,rv,parts,dirs,i) {
   # Create directory path for new file
   #
   split(OBJ,parts,"/")
-  dirs=parts[1]
-  for (i=2; i<length(parts); i++)
+  if (length(parts) < 2)
     {
-      dirs=(dirs"/"parts[i])
+      MESSAGE=(MESSAGE"Failed to add file to wallet root directory")
+      MESSAGE=(MESSAGE"\nYou must provide at least one subdirectory")
+      rv=1
     }
-  cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
-  rv=system(cmd); close(cmd)
-  if (rv)
+  else
     {
-      MESSAGE=(MESSAGE"Failed to create directory path for new file")
+      dirs=parts[1]
+      for (i=2; i<length(parts); i++)
+        {
+          dirs=(dirs"/"parts[i])
+        }
+      cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
+      rv=system(cmd); close(cmd)
+      if (rv)
+        {
+          MESSAGE=(MESSAGE"Failed to create directory path for new file")
+        }
     }
-  return ""
+  return rv
 }
 
 function _gitLog(  cmd,rv) {
