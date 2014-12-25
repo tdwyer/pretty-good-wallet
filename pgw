@@ -68,14 +68,12 @@ BEGIN {
   GPG=(GPG_BIN" --yes --batch --quiet")
   XCLIP=(XCLIP_BIN" -selection clipboard")
   # Relative vars
-  if (index(ARGV2,":") )
-    {
+  if (index(ARGV2,":") ) {
       split(ARGV2,COMMIT_ARGV2,":")
       COMMIT=COMMIT_ARGV2[1]
       OBJ=(COMMIT_ARGV2[2]".gpg")
     }
-  else
-    {
+  else {
       OBJ=(ARGV2".gpg")
     }
   #
@@ -92,106 +90,80 @@ function _main(  cmd,rv) {
   # If a commit is specified
   # Revert file to that commit before doing anything
   #
-  if (length(COMMIT) )
-    {
+  if (length(COMMIT) ) {
       rv=_gitRevert()
     }
 
   #
   # if else is cleaner and more reliable then switch case
   #
-  if ( ARGV1 == "add" )
-    {
+  if ( ARGV1 == "add" ) {
       _add()
     }
-  else if ( ARGV1 == "auto" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "auto" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _auto()
         }
     }
-  else if ( ARGV1 == "clean" )
-    {
+  else if ( ARGV1 == "clean" ) {
       rv=_gitClean()
     }
-  else if ( ARGV1 == "clip" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "clip" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _clip()
         }
     }
-  else if ( ARGV1 == "crypt" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "crypt" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _crypt()
         }
     }
-  else if ( ARGV1 == "find" )
-    {
+  else if ( ARGV1 == "find" ) {
       _search()
     }
-  else if ( ARGV1 == "help" )
-    {
+  else if ( ARGV1 == "help" ) {
       _help()
     }
-  else if ( ARGV1 == "log" )
-    {
+  else if ( ARGV1 == "log" ) {
       rv=_gitLog()
     }
-  else if ( ARGV1 == "remove" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "remove" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _gitRm()
         }
     }
-  else if ( ARGV1 == "revert" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "revert" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _gitSync()
         }
     }
-  else if ( ARGV1 == "stdout" )
-    {
-      if ( _validate() )
-        {
+  else if ( ARGV1 == "stdout" ) {
+      if ( _validate() ) {
           _search()
         }
-      else
-        {
+      else {
           _stdout()
         }
     }
-  else if ( ARGV1 == "update" )
-    {
+  else if ( ARGV1 == "update" ) {
       _gitSync()
     }
-  else
-    {
+  else {
       _help()
     }
   
@@ -203,8 +175,7 @@ function _main(  cmd,rv) {
   # a user can type in. The code end up being crazy as shit and therefor
   # unstable
   #
-  if (length(COMMIT) )
-    {
+  if (length(COMMIT) ) {
       rv=_gitClean()
     }
 }
@@ -216,15 +187,13 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   #
   cmd=("if [[ ! -x "PINSH_BIN" ]] ;then exit 1 ;else exit 0 ;fi")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Pinentry executable wrapper script 'pinsh' not found")
       MESSAGE=(MESSAGE"Download from https://github.com/tdwyer/pinsh")
       exit
     }
 
-  if (_makeDirs() )
-    {
+  if (_makeDirs() ) {
       exit
     }
 
@@ -242,8 +211,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   #
   cmd=(PINSH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed encrypt file")
       rv=_gitClean()
       exit
@@ -254,8 +222,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   #
   cmd=(GPG" -d "WALLET"/"OBJ" | "SHA256_BIN)
   cmd | getline hashOne; close(cmd)
-  if (ERRNO)
-    {
+  if (ERRNO) {
       MESSAGE=(MESSAGE"Failed to get sha256 hash of newly added file")
       rv=_gitClean()
       exit
@@ -266,8 +233,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   #
   cmd=(PINSH_BIN" | "SHA256_BIN)
   cmd | getline hashTwo; close(cmd)
-  if (ERRNO)
-    {
+  if (ERRNO) {
       MESSAGE=(MESSAGE"Pinentry failled at second prompt for validation")
       rv=_gitClean()
       exit
@@ -280,12 +246,10 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   # Else
   # _gitSync()
   #
-  if (hashOne == hashTwo)
-    {
+  if (hashOne == hashTwo) {
       _gitSync()
     }
-  else
-    {
+  else {
       MESSAGE=(MESSAGE"Pinentry failled when validating: cleaning up")
       rv=_gitClean()
     }
@@ -300,12 +264,10 @@ function _auto(  cmd,rv,xwindow) {
   # to current cursor position inside selected window
   #
   cmd=(XDO_BIN" selectwindow 2>/dev/null")
-  while((cmd | getline xwindow) > 0)
-    {
+  while((cmd | getline xwindow) > 0) {
       continue
     }; close(cmd)
-  if (ERRNO)
-    {
+  if (ERRNO) {
       MESSAGE=(MESSAGE"Failed to get X11 Window selection")
       exit
     }
@@ -313,8 +275,7 @@ function _auto(  cmd,rv,xwindow) {
   cmd=(XDO_BIN" windowraise "xwindow)
   cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to autotype plaintext")
     }
   return ""
@@ -328,8 +289,7 @@ function _clip(  cmd,rv) {
   cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" |"XCLIP" -i")
   cmd=(cmd" ;sleep "CLIPBOARD_TIMEOUT" && echo -n '' |"XCLIP" -i  & ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to stuff plaintext into X11 Clipboard selection")
     }
   return ""
@@ -341,8 +301,7 @@ function _crypt(  cmd,rv) {
   #
   cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to stuff ciphertext into X11 Clipboard selection")
     }
   return ""
@@ -354,8 +313,7 @@ function _gitAdd(  cmd,rv) {
   #
   cmd=(GIT" add --all")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to add changes to git repository")
     }
   return rv
@@ -370,44 +328,35 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
   # Remove all files not tracked by Git
   #
   cmd=(GIT" status --porcelain")
-  while ( (cmd | getline line) > 0 )
-    {
-      if (match(line,"^\\?\\? ") )
-        {
+  while ( (cmd | getline line) > 0 ) {
+      if (match(line,"^\?\? ") ) {
           sub("\\?\\? ","",line)
-          if (length(line) )
-            {
+          if (length(line) ) {
               untracked[i++] = line
-              if (cmd_)
-                {
+              if (cmd_) {
                   cmd_=(cmd_" ;"RM_BIN" -ri "WALLET"/"line)
                 }
-              else
-                {
+              else {
                   cmd_=(RM_BIN" -rf "WALLET"/"line)
                 }
             }
         }
     }; close(cmd)
-  if (ERRNO)
-    {
+  if (ERRNO) {
       MESSAGE=(MESSAGE"Failed to git status --porcelain ")
     }
 
   #
   # Reset HEAD
   #
-  if (cmd_)
-    {
+  if (cmd_) {
       cmd=(cmd_" ;"GIT" checkout -- . ")
     }
-  else
-    {
+  else {
       cmd=(GIT" checkout -- . ")
     }
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to clean git repository")
     }
   return rv
@@ -420,23 +369,19 @@ function _gitCommit(  cmd,rv,hostname) {
   sub(/(.gpg)$/,"",OBJ)
   cmd=(HOSTNAME_BIN)
   cmd | getline hostname; close(cmd)
-  if (ERRNO)
-    {
+  if (ERRNO) {
       MESSAGE=(MESSAGE"Failed to get hostname")
     }
   cmd=(GIT" commit -m")
-  if (length(COMMIT) )
-    {
+  if (length(COMMIT) ) {
       cmd=(cmd" \""COMMIT":"OBJ)
     }
-  else
-    {
+  else {
       cmd=(cmd" \""OBJ)
     }
   cmd=(cmd" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to commit changes to git repository")
     }
   return rv
@@ -448,8 +393,7 @@ function _gitLog(  cmd,rv) {
   #
   cmd=(GIT" --no-pager log --oneline --reverse ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to list the git log")
     }
   return ""
@@ -461,8 +405,7 @@ function _gitPull(  cmd,rv) {
   #
   cmd=(GIT" push origin master ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to pull origin master")
     }
   return rv
@@ -474,8 +417,7 @@ function _gitPush(  cmd,rv) {
   #
   cmd=(GIT" push origin master")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to push origin master")
     }
   return rv
@@ -487,8 +429,7 @@ function _gitRevert(  cmd,rv) {
   #
   cmd=(GIT" show "COMMIT":"OBJ" > "WALLET"/"OBJ)
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to revert")
       rv=_gitClean()
     }
@@ -501,8 +442,7 @@ function _gitRm(  cmd,rv) {
   #
   cmd=(GIT" rm "OBJ)
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed to remove file")
     }
   _gitSync()
@@ -519,15 +459,13 @@ function _gitSync(  cmd,rv) {
   # git push origin master
   #
   rv=_gitAdd()
-  if (rv)
-    {
+  if (rv) {
       rv=_gitClean()
       exit
     }
   rv=_gitPull()
   rv=_gitCommit()
-  if (rv)
-    {
+  if (rv) {
       rv=_gitClean()
       exit
     }
@@ -549,23 +487,19 @@ function _makeDirs(  cmd,rv,parts,dirs,i) {
   # Create directory path for new file
   #
   split(OBJ,parts,"/")
-  if (length(parts) < 2)
-    {
+  if (length(parts) < 2) {
       MESSAGE=(MESSAGE"Failed to add file to wallet root directory")
       MESSAGE=(MESSAGE"\nYou must provide at least one subdirectory")
       rv=1
     }
-  else
-    {
+  else {
       dirs=parts[1]
-      for (i=2; i<length(parts); i++)
-        {
+      for (i=2; i<length(parts); i++) {
           dirs=(dirs"/"parts[i])
         }
       cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
       rv=system(cmd); close(cmd)
-      if (rv)
-        {
+      if (rv) {
           MESSAGE=(MESSAGE"Failed to create directory path for new file")
         }
     }
@@ -587,12 +521,10 @@ function _search(  cmd,line) {
   # If ARGV2; match it using egrep style regex
   #
   sub(/(.gpg)$/,"",OBJ)
-  if (length(OBJ) )
-    {
+  if (length(OBJ) ) {
       cmd=(GIT" ls-files -- |grep -E "OBJ" ")
     }
-  else
-    {
+  else {
       cmd=(GIT" ls-files -- ")
     }
 
@@ -601,8 +533,7 @@ function _search(  cmd,line) {
   # Print found files
   #
   printf "%s%s%s", "\n", WALLET, "\n"
-  while ( (cmd | getline line) > 0)
-    {
+  while ( (cmd | getline line) > 0) {
       gsub(/(.gpg)$/,"",line)
       printf "%s%s%s", "    ", line, "\n"
     }; close(cmd)
@@ -615,8 +546,7 @@ function _stdout(  cmd,rv) {
   #
   cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" ")
   rv=system(cmd); close(cmd)
-  if (rv)
-    {
+  if (rv) {
       MESSAGE=(MESSAGE"Failed allow GnuPG to send plaintext to stdout")
     }
   return ""
@@ -636,8 +566,7 @@ END {
   #
   # Print messages
   #
-  if (length(MESSAGE) )
-    {
+  if (length(MESSAGE) ) {
       _message(MESSAGE)
     }
 }
