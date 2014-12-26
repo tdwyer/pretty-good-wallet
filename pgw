@@ -491,7 +491,8 @@ function _help( usage) {
   #
   # Print the help message
   #
-  usage=("Usage: pgw (help|update|list|find|add|crypt|clip|auto) domain.com/1/pass")
+  usage=("Usage: pgw (add|auto|clean|clip|crypt|find|help|log|remove|")
+  usage=(usage"revert|stdout|update) domain.com/1/pass")
   _message(usage)
   return ""
 }
