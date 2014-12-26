@@ -26,30 +26,12 @@
 #                                                                             #
 ###############################################################################
 #
-# All my computers run OpenBSD
-# However, I bend over backwards to make it as OS agnostic as possible.
-#
-#
 BEGIN {
   #
   # Set all global vars
   #
-  # Time in seconds until X11 Clipboard selection is cleared
-  CLIPBOARD_TIMEOUT=30
+  WALLET_NAME=".gwallet"
   #
-  ARGV1=ARGV[1]
-  ARGV2=ARGV[2]
-  # ENV
-  DISPLAY=ENVIRON["DISPLAY"]
-  HOME=ENVIRON["HOME"]
-  GPG_AGENT_INFO=ENVIRON["GPG_AGENT_INFO"]
-  GPG_TTY=ENVIRON["GPG_TTY"]
-  STY=ENVIRON["STY"]
-  TMUX=ENVIRON["TMUX"]
-  TMUX_PANE=ENVIRON["TMUX_PANE"]
-  USER=ENVIRON["USER"]
-  # Composite vars
-  WALLET=(HOME"/.gwallet")
   # Bins
   CRYPTBOARD_BIN="/usr/local/bin/cryptboard"
   DATE_BIN="/bin/date"
@@ -63,11 +45,32 @@ BEGIN {
   SHA256_BIN="/bin/sha256"
   XCLIP_BIN="/usr/local/bin/xclip"
   XDO_BIN="/usr/local/bin/xdotool"
+  #
+  # Time in seconds until X11 Clipboard selection is cleared
+  CLIPBOARD_TIMEOUT=30
+  #
+  # ENV
+  DISPLAY=ENVIRON["DISPLAY"]
+  HOME=ENVIRON["HOME"]
+  GPG_AGENT_INFO=ENVIRON["GPG_AGENT_INFO"]
+  GPG_TTY=ENVIRON["GPG_TTY"]
+  STY=ENVIRON["STY"]
+  TMUX=ENVIRON["TMUX"]
+  TMUX_PANE=ENVIRON["TMUX_PANE"]
+  USER=ENVIRON["USER"]
+  #
+  # Composite vars
+  WALLET=(HOME"/"WALLET_NAME)
+  #
   # Composite commands
   GIT=(GIT_BIN" -C "WALLET" ")
   GPG=(GPG_BIN" --yes --batch --quiet")
   XCLIP=(XCLIP_BIN" -selection clipboard")
+  #
   # Relative vars
+  ARGV1=ARGV[1]
+  ARGV2=ARGV[2]
+  #
   if (index(ARGV2,":") ) {
     split(ARGV2,COMMIT_ARGV2,":")
     COMMIT=COMMIT_ARGV2[1]
@@ -128,6 +131,12 @@ function _main(  cmd,rv) {
     }
   }
   else if ( ARGV1 == "find" ) {
+    if (length(COMMIT) ) {
+      OBJ=COMMIT_ARGV2[2]
+    }
+    else {
+      OBJ=ARGV2
+    }
     _search()
   }
   else if ( ARGV1 == "help" ) {
@@ -164,7 +173,13 @@ function _main(  cmd,rv) {
     _gitSync()
   }
   else {
-    _help()
+    if (ARGV1) {
+      OBJ=ARGV1
+      _search()
+    }
+    else {
+      _help()
+    }
   }
   
   #
