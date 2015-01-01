@@ -200,7 +200,7 @@ Maybe somehow some junk is in your wallet. This should not happen, because Prett
     pgw clean
 
 
-Known Vulnerabilities and Mitigations
+Known Vulnerabilities and Workarounds
 =====================================
 
 
