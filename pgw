@@ -203,8 +203,8 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   cmd=("if [[ ! -x "PINSH_BIN" ]] ;then exit 1 ;else exit 0 ;fi")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Pinentry executable wrapper script 'pinsh' not found")
-    MESSAGE=(MESSAGE"Download from https://github.com/tdwyer/pinsh")
+    MESSAGE=(MESSAGE"\nPinentry executable wrapper script 'pinsh' not found")
+    MESSAGE=(MESSAGE"\nDownload from https://github.com/tdwyer/pinsh")
     exit
   }
 
@@ -227,7 +227,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   cmd=(PINSH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed encrypt file")
+    MESSAGE=(MESSAGE"\nFailed encrypt file")
     rv=_gitClean()
     exit
   }
@@ -238,7 +238,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   cmd=(GPG" -d "WALLET"/"OBJ" | "SHA256_BIN)
   cmd | getline hashOne; close(cmd)
   if (ERRNO) {
-    MESSAGE=(MESSAGE"Failed to get sha256 hash of newly added file")
+    MESSAGE=(MESSAGE"\nFailed to get sha256 hash of newly added file")
     rv=_gitClean()
     exit
   }
@@ -249,7 +249,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   cmd=(PINSH_BIN" | "SHA256_BIN)
   cmd | getline hashTwo; close(cmd)
   if (ERRNO) {
-    MESSAGE=(MESSAGE"Pinentry failled at second prompt for validation")
+    MESSAGE=(MESSAGE"\nPinentry failled at second prompt for validation")
     rv=_gitClean()
     exit
   }
@@ -265,7 +265,7 @@ function _add(  cmd,rv,hashOne,hashTwo) {
     _gitSync()
   }
   else {
-    MESSAGE=(MESSAGE"Pinentry failled when validating: cleaning up")
+    MESSAGE=(MESSAGE"\nPinentry failled when validating: cleaning up")
     rv=_gitClean()
   }
 
@@ -283,7 +283,7 @@ function _auto(  cmd,rv,xwindow) {
     continue
   }; close(cmd)
   if (ERRNO) {
-    MESSAGE=(MESSAGE"Failed to get X11 Window selection")
+    MESSAGE=(MESSAGE"\nFailed to get X11 Window selection")
     exit
   }
 
@@ -291,7 +291,7 @@ function _auto(  cmd,rv,xwindow) {
   cmd=(cmd" ;"XDO_BIN" type \"$("GPG" -d "WALLET"/"OBJ")\"")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to autotype plaintext")
+    MESSAGE=(MESSAGE"\nFailed to autotype plaintext")
   }
   return ""
 }
@@ -305,7 +305,7 @@ function _clip(  cmd,rv) {
   cmd=(cmd" ;sleep "CLIPBOARD_TIMEOUT" && echo -n '' |"XCLIP" -i  & ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to stuff plaintext into X11 Clipboard selection")
+    MESSAGE=(MESSAGE"\nFailed to stuff plaintext into X11 Clipboard selection")
   }
   return ""
 }
@@ -317,7 +317,7 @@ function _crypt(  cmd,rv) {
   cmd=("cat "WALLET"/"OBJ" |"XCLIP" -i")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to stuff ciphertext into X11 Clipboard selection")
+    MESSAGE=(MESSAGE"\nFailed to stuff ciphertext into X11 Clipboard selection")
   }
   return ""
 }
@@ -329,7 +329,7 @@ function _gitAdd(  cmd,rv) {
   cmd=(GIT" add --all")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to add changes to git repository")
+    MESSAGE=(MESSAGE"\nFailed to add changes to git repository")
   }
   return rv
 }
@@ -357,7 +357,7 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
     }
   }; close(cmd)
   if (ERRNO) {
-    MESSAGE=(MESSAGE"Failed to git status --porcelain ")
+    MESSAGE=(MESSAGE"\nFailed to git status --porcelain ")
   }
 
   #
@@ -371,7 +371,7 @@ function _gitClean(  cmd,rv,line,i,untracked,testString) {
   }
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to clean git repository")
+    MESSAGE=(MESSAGE"\nFailed to clean git repository")
   }
   return rv
 }
@@ -384,7 +384,7 @@ function _gitCommit(  cmd,rv,hostname) {
   cmd=(HOSTNAME_BIN)
   cmd | getline hostname; close(cmd)
   if (ERRNO) {
-    MESSAGE=(MESSAGE"Failed to get hostname")
+    MESSAGE=(MESSAGE"\nFailed to get hostname")
   }
   cmd=(GIT" commit -m")
   if (length(COMMIT) ) {
@@ -396,7 +396,7 @@ function _gitCommit(  cmd,rv,hostname) {
   cmd=(cmd" "ARGV1" $("DATE_BIN" \"+%x %T\") "USER"@"hostname"\" ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to commit changes to git repository")
+    MESSAGE=(MESSAGE"\nFailed to commit changes to git repository")
   }
   return rv
 }
@@ -408,7 +408,7 @@ function _gitLog(  cmd,rv) {
   cmd=(GIT" --no-pager log --oneline --reverse ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to list the git log")
+    MESSAGE=(MESSAGE"\nFailed to list the git log")
   }
   return ""
 }
@@ -420,7 +420,7 @@ function _gitPull(  cmd,rv) {
   cmd=(GIT" push origin master ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to pull origin master")
+    MESSAGE=(MESSAGE"\nFailed to pull origin master")
   }
   return rv
 }
@@ -432,7 +432,7 @@ function _gitPush(  cmd,rv) {
   cmd=(GIT" push origin master")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to push origin master")
+    MESSAGE=(MESSAGE"\nFailed to push origin master")
   }
   return rv
 }
@@ -444,7 +444,7 @@ function _gitRevert(  cmd,rv) {
   cmd=(GIT" show "COMMIT":"OBJ" > "WALLET"/"OBJ)
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to revert")
+    MESSAGE=(MESSAGE"\nFailed to revert")
     rv=_gitClean()
   }
   return rv
@@ -457,7 +457,7 @@ function _gitRm(  cmd,rv) {
   cmd=(GIT" rm "OBJ)
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed to remove file")
+    MESSAGE=(MESSAGE"\nFailed to remove file")
   }
   _gitSync()
   return rv
@@ -503,8 +503,8 @@ function _makeDirs(  cmd,rv,parts,dirs,i) {
   #
   split(OBJ,parts,"/")
   if (length(parts) < 2) {
-    MESSAGE=(MESSAGE"Failed to add file to wallet root directory")
-    MESSAGE=(MESSAGE"\nYou must provide at least one subdirectory")
+    MESSAGE=(MESSAGE"\nFailed to add file to wallet root directory")
+    MESSAGE=(MESSAGE"\n\nYou must provide at least one subdirectory")
     rv=1
   }
   else {
@@ -515,7 +515,7 @@ function _makeDirs(  cmd,rv,parts,dirs,i) {
     cmd=(MKDIR_BIN" -p "WALLET"/"dirs)
     rv=system(cmd); close(cmd)
     if (rv) {
-      MESSAGE=(MESSAGE"Failed to create directory path for new file")
+      MESSAGE=(MESSAGE"\nFailed to create directory path for new file")
     }
   }
   return rv
@@ -562,7 +562,7 @@ function _stdout(  cmd,rv) {
   cmd=("echo -n \"$("GPG" -d "WALLET"/"OBJ" )\" ")
   rv=system(cmd); close(cmd)
   if (rv) {
-    MESSAGE=(MESSAGE"Failed allow GnuPG to send plaintext to stdout")
+    MESSAGE=(MESSAGE"\nFailed allow GnuPG to send plaintext to stdout")
   }
   return ""
 }
