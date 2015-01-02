@@ -31,6 +31,13 @@ BEGIN {
   # Set all global vars
   #
   WALLET_NAME=".gwallet"
+  CIPHER="TWOFISH"
+  #
+  GPG_KEYID=""
+  if ( ! GPG_KEYID) {
+    print "You must add YOUR keyid to top of script variable GPG_KEYID"
+    exit 1
+  }
   #
   # Bins
   CRYPTBOARD_BIN="/usr/local/bin/cryptboard"
@@ -224,7 +231,8 @@ function _add(  cmd,rv,hashOne,hashTwo) {
   # BUT as long as the user Cancels the second pinentry prompt or
   # enters different plaintext no changes will be committed
   #
-  cmd=(PINSH_BIN" |"GPG" -a --default-recipient-self --sign -o "WALLET"/"OBJ" -e ")
+  cmd=(PINSH_BIN" |"GPG" -a -r "GPG_KEYID" --sign ")
+  cmd=(cmd"--cipher-algo "CIPHER" -o "WALLET"/"OBJ" -e ")
   rv=system(cmd); close(cmd)
   if (rv) {
     MESSAGE=(MESSAGE"\nFailed encrypt file")
