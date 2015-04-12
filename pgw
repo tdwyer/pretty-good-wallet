@@ -105,7 +105,7 @@ function _main(  cmd,rv) {
   }
 
   #
-  # if else is cleaner and more reliable then switch case
+  #
   #
   if ( ARGV1 == "add" ) {
     _add()
